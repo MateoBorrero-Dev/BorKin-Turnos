@@ -1,0 +1,33 @@
+{
+  "name": "borkin-turnos",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24 <27",
+    "npm": ">=11"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspace backend && npm run test --workspace frontend",
+    "build": "npm run build --workspace backend && npm run build --workspace frontend",
+    "db:generate": "npm run db:generate --workspace backend",
+    "db:migrate": "npm run db:migrate --workspace backend",
+    "db:deploy": "npm run db:deploy --workspace backend",
+    "db:seed": "npm run db:seed --workspace backend"
+  },
+  "allowScripts": {
+    "@prisma/engines@7.9.1": true,
+    "argon2@0.45.1": true,
+    "esbuild@0.28.2": true,
+    "prisma@7.9.1": true
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

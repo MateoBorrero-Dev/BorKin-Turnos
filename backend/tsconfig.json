@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023"],
+    "types": ["node", "vitest/globals"],
+    "rootDir": ".",
+    "outDir": "dist",
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src", "tests", "prisma", "prisma.config.ts", "vitest.config.ts", "eslint.config.js"]
+}

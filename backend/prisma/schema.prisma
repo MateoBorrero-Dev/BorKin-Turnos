@@ -1,0 +1,438 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PermissionEffect {
+  ALLOW
+  DENY
+}
+
+enum AppointmentStatus {
+  PENDIENTE
+  CONFIRMADO
+  EN_CURSO
+  COMPLETADO
+  CANCELADO
+  AUSENTE
+}
+
+enum ScheduleBlockReason {
+  DESCANSO
+  ALMUERZO
+  VACACIONES
+  CAPACITACION
+  AUSENCIA
+  PERSONALIZADO
+}
+
+enum CashRegisterStatus {
+  ABIERTA
+  CERRADA
+}
+
+enum CashMovementType {
+  INGRESO
+  EGRESO
+}
+
+enum PaymentStatus {
+  REGISTRADO
+  REVERTIDO
+}
+
+model Business {
+  id                String                   @id @default(uuid()) @db.Uuid
+  name              String
+  logoUrl           String?
+  phone             String?
+  whatsapp          String?
+  email             String?
+  address           String?
+  instagram         String?
+  currency          String                   @default("ARS") @db.VarChar(3)
+  locale            String                   @default("es-AR")
+  timezone          String                   @default("America/Argentina/Cordoba")
+  primaryColor      String                   @default("#2563EB") @db.VarChar(7)
+  active            Boolean                  @default(true)
+  createdAt         DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                 @updatedAt @db.Timestamptz(3)
+  settings          AppSetting[]
+  users             User[]
+  roles             Role[]
+  clients           Client[]
+  categories        ServiceCategory[]
+  services          Service[]
+  employees         Employee[]
+  blocks            ScheduleBlock[]
+  appointments      Appointment[]
+  appointmentEvents AppointmentStatusEvent[]
+  paymentMethods    PaymentMethod[]
+  payments          Payment[]
+  cashRegisters     CashRegister[]
+  cashMovements     CashMovement[]
+  auditLogs         AuditLog[]
+}
+
+model AppSetting {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @db.Uuid
+  key        String
+  value      Json
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  @@unique([businessId, key])
+}
+
+model Permission {
+  id              String           @id @default(uuid()) @db.Uuid
+  code            String           @unique
+  name            String
+  description     String?
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  businessId  String           @db.Uuid
+  code        String
+  name        String
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+  business    Business         @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  users       User[]
+  permissions RolePermission[]
+  @@unique([businessId, code])
+  @@index([businessId])
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleId, permissionId])
+}
+
+model User {
+  id                  String                   @id @default(uuid()) @db.Uuid
+  businessId          String                   @db.Uuid
+  roleId              String                   @db.Uuid
+  username            String
+  email               String
+  passwordHash        String
+  firstName           String
+  lastName            String
+  active              Boolean                  @default(true)
+  lastLoginAt         DateTime?                @db.Timestamptz(3)
+  deletedAt           DateTime?                @db.Timestamptz(3)
+  createdAt           DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                 @updatedAt @db.Timestamptz(3)
+  business            Business                 @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  role                Role                     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  permissions         UserPermission[]
+  refreshSessions     RefreshSession[]
+  createdAppointments Appointment[]            @relation("AppointmentCreator")
+  appointmentEvents   AppointmentStatusEvent[]
+  paymentsRecorded    Payment[]                @relation("PaymentRecorder")
+  registersOpened     CashRegister[]           @relation("CashOpenedBy")
+  registersClosed     CashRegister[]           @relation("CashClosedBy")
+  cashMovements       CashMovement[]           @relation("CashMovementCreator")
+  auditLogs           AuditLog[]
+  @@unique([businessId, username])
+  @@unique([businessId, email])
+  @@index([businessId, active])
+}
+
+model UserPermission {
+  userId       String           @db.Uuid
+  permissionId String           @db.Uuid
+  effect       PermissionEffect @default(ALLOW)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission       @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([userId, permissionId])
+}
+
+model RefreshSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique @db.Char(64)
+  familyId   String    @db.Uuid
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime  @db.Timestamptz(3)
+  lastUsedAt DateTime? @db.Timestamptz(3)
+  revokedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, familyId])
+  @@index([expiresAt])
+}
+
+model Client {
+  id           String        @id @default(uuid()) @db.Uuid
+  businessId   String        @db.Uuid
+  firstName    String
+  lastName     String
+  phone        String?
+  whatsapp     String?
+  email        String?
+  birthDate    DateTime?     @db.Date
+  address      String?
+  notes        String?
+  active       Boolean       @default(true)
+  registeredAt DateTime      @default(now()) @db.Timestamptz(3)
+  deletedAt    DateTime?     @db.Timestamptz(3)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  appointments Appointment[]
+  @@index([businessId, active])
+  @@index([businessId, lastName, firstName])
+  @@index([businessId, phone])
+  @@index([businessId, email])
+}
+
+model ServiceCategory {
+  id         String    @id @default(uuid()) @db.Uuid
+  businessId String    @db.Uuid
+  name       String
+  active     Boolean   @default(true)
+  sortOrder  Int       @default(0)
+  deletedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  services   Service[]
+  @@unique([businessId, name])
+}
+
+model Service {
+  id              String            @id @default(uuid()) @db.Uuid
+  businessId      String            @db.Uuid
+  categoryId      String?           @db.Uuid
+  name            String
+  description     String?
+  price           Decimal           @db.Decimal(14, 2)
+  durationMinutes Int
+  color           String            @default("#2563EB") @db.VarChar(7)
+  active          Boolean           @default(true)
+  deletedAt       DateTime?         @db.Timestamptz(3)
+  createdAt       DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @db.Timestamptz(3)
+  business        Business          @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  category        ServiceCategory?  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  employees       EmployeeService[]
+  appointments    Appointment[]
+  @@index([businessId, active])
+  @@index([businessId, categoryId])
+}
+
+model Employee {
+  id           String             @id @default(uuid()) @db.Uuid
+  businessId   String             @db.Uuid
+  firstName    String
+  lastName     String
+  phone        String?
+  email        String?
+  photoUrl     String?
+  color        String             @default("#0F766E") @db.VarChar(7)
+  active       Boolean            @default(true)
+  deletedAt    DateTime?          @db.Timestamptz(3)
+  createdAt    DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime           @updatedAt @db.Timestamptz(3)
+  business     Business           @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  services     EmployeeService[]
+  schedules    EmployeeSchedule[]
+  blocks       ScheduleBlock[]
+  appointments Appointment[]
+  @@index([businessId, active])
+}
+
+model EmployeeService {
+  employeeId String   @db.Uuid
+  serviceId  String   @db.Uuid
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  @@id([employeeId, serviceId])
+}
+
+model EmployeeSchedule {
+  id          String   @id @default(uuid()) @db.Uuid
+  employeeId  String   @db.Uuid
+  dayOfWeek   Int
+  startMinute Int
+  endMinute   Int
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  @@index([employeeId, dayOfWeek])
+}
+
+model ScheduleBlock {
+  id           String              @id @default(uuid()) @db.Uuid
+  businessId   String              @db.Uuid
+  employeeId   String?             @db.Uuid
+  startAt      DateTime            @db.Timestamptz(3)
+  endAt        DateTime            @db.Timestamptz(3)
+  allDay       Boolean             @default(false)
+  reason       ScheduleBlockReason
+  customReason String?
+  active       Boolean             @default(true)
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime            @updatedAt @db.Timestamptz(3)
+  business     Business            @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  employee     Employee?           @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  @@index([businessId, employeeId, startAt, endAt])
+}
+
+model Appointment {
+  id              String                   @id @default(uuid()) @db.Uuid
+  businessId      String                   @db.Uuid
+  clientId        String                   @db.Uuid
+  serviceId       String                   @db.Uuid
+  employeeId      String                   @db.Uuid
+  createdById     String                   @db.Uuid
+  startAt         DateTime                 @db.Timestamptz(3)
+  endAt           DateTime                 @db.Timestamptz(3)
+  durationMinutes Int
+  price           Decimal                  @db.Decimal(14, 2)
+  status          AppointmentStatus        @default(PENDIENTE)
+  notes           String?
+  completedAt     DateTime?                @db.Timestamptz(3)
+  cancelledAt     DateTime?                @db.Timestamptz(3)
+  version         Int                      @default(1)
+  createdAt       DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                 @updatedAt @db.Timestamptz(3)
+  business        Business                 @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  client          Client                   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  service         Service                  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  employee        Employee                 @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  createdBy       User                     @relation("AppointmentCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  payments        Payment[]
+  statusEvents    AppointmentStatusEvent[]
+  @@index([businessId, startAt])
+  @@index([businessId, employeeId, startAt, endAt])
+  @@index([businessId, clientId, startAt])
+  @@index([businessId, status, startAt])
+}
+
+model AppointmentStatusEvent {
+  id            String             @id @default(uuid()) @db.Uuid
+  businessId    String             @db.Uuid
+  appointmentId String             @db.Uuid
+  userId        String             @db.Uuid
+  fromStatus    AppointmentStatus?
+  toStatus      AppointmentStatus
+  reason        String?
+  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
+  business      Business           @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  appointment   Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@index([businessId, appointmentId, createdAt])
+}
+
+model PaymentMethod {
+  id            String         @id @default(uuid()) @db.Uuid
+  businessId    String         @db.Uuid
+  name          String
+  code          String
+  isCash        Boolean        @default(false)
+  active        Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  payments      Payment[]
+  cashMovements CashMovement[]
+  @@unique([businessId, code])
+}
+
+model Payment {
+  id              String        @id @default(uuid()) @db.Uuid
+  businessId      String        @db.Uuid
+  appointmentId   String        @db.Uuid
+  paymentMethodId String        @db.Uuid
+  cashRegisterId  String        @db.Uuid
+  recordedById    String        @db.Uuid
+  amount          Decimal       @db.Decimal(14, 2)
+  status          PaymentStatus @default(REGISTRADO)
+  reversedAt      DateTime?     @db.Timestamptz(3)
+  reversalReason  String?
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  appointment     Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  cashRegister    CashRegister  @relation(fields: [cashRegisterId], references: [id], onDelete: Restrict)
+  recordedBy      User          @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
+  cashMovement    CashMovement?
+  @@index([businessId, appointmentId, status])
+  @@index([businessId, createdAt])
+}
+
+model CashRegister {
+  id            String             @id @default(uuid()) @db.Uuid
+  businessId    String             @db.Uuid
+  openedById    String             @db.Uuid
+  closedById    String?            @db.Uuid
+  status        CashRegisterStatus @default(ABIERTA)
+  openedAt      DateTime           @default(now()) @db.Timestamptz(3)
+  closedAt      DateTime?          @db.Timestamptz(3)
+  openingAmount Decimal            @db.Decimal(14, 2)
+  expectedCash  Decimal?           @db.Decimal(14, 2)
+  countedCash   Decimal?           @db.Decimal(14, 2)
+  difference    Decimal?           @db.Decimal(14, 2)
+  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime           @updatedAt @db.Timestamptz(3)
+  business      Business           @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  openedBy      User               @relation("CashOpenedBy", fields: [openedById], references: [id], onDelete: Restrict)
+  closedBy      User?              @relation("CashClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
+  movements     CashMovement[]
+  payments      Payment[]
+  @@index([businessId, status, openedAt])
+}
+
+model CashMovement {
+  id              String           @id @default(uuid()) @db.Uuid
+  businessId      String           @db.Uuid
+  cashRegisterId  String           @db.Uuid
+  paymentMethodId String?          @db.Uuid
+  paymentId       String?          @unique @db.Uuid
+  createdById     String           @db.Uuid
+  type            CashMovementType
+  concept         String
+  amount          Decimal          @db.Decimal(14, 2)
+  occurredAt      DateTime         @default(now()) @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  cashRegister    CashRegister     @relation(fields: [cashRegisterId], references: [id], onDelete: Restrict)
+  paymentMethod   PaymentMethod?   @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  payment         Payment?         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  createdBy       User             @relation("CashMovementCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  @@index([businessId, occurredAt])
+  @@index([cashRegisterId, occurredAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @db.Uuid
+  userId     String?  @db.Uuid
+  action     String
+  entity     String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@index([businessId, createdAt])
+  @@index([businessId, action, createdAt])
+}
