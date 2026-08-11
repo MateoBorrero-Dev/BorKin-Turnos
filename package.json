@@ -11,7 +11,10 @@
     "backend"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
+    "dev": "concurrently --kill-others-on-fail --names backend,frontend --prefix-colors blue,magenta \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:all": "node scripts/local-postgres.mjs ensure && npm run dev",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspace backend && npm run test --workspace frontend",
@@ -19,7 +22,10 @@
     "db:generate": "npm run db:generate --workspace backend",
     "db:migrate": "npm run db:migrate --workspace backend",
     "db:deploy": "npm run db:deploy --workspace backend",
-    "db:seed": "npm run db:seed --workspace backend"
+    "db:seed": "npm run db:seed --workspace backend",
+    "db:start": "node scripts/local-postgres.mjs start",
+    "db:stop": "node scripts/local-postgres.mjs stop",
+    "db:status": "node scripts/local-postgres.mjs status"
   },
   "allowScripts": {
     "@prisma/engines@7.9.1": true,
@@ -28,6 +34,7 @@
     "prisma@7.9.1": true
   },
   "devDependencies": {
+    "concurrently": "9.2.1",
     "typescript": "6.0.3"
   }
 }

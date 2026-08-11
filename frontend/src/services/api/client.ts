@@ -1,6 +1,7 @@
 import type { ApiEnvelope, ApiErrorBody, AuthPayload } from "../../types/api";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
+const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
 let accessToken: string | null = null;
 let activeRefresh: Promise<AuthPayload> | null = null;
 
@@ -14,6 +15,8 @@ export class ApiClientError extends Error {
 export function setAccessToken(token: string | null) {
   accessToken = token;
 }
+
+export function assetUrl(path: string | null | undefined) { return path ? `${API_ORIGIN}${path}` : null; }
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (response.status === 204) return undefined as T;

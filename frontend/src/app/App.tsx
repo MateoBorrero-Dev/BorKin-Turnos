@@ -7,6 +7,9 @@ import { AppLayout } from "../layouts/AppLayout";
 import { DashboardPage } from "../pages/DashboardPage";
 import { LoginPage } from "../pages/LoginPage";
 import { UsersPage } from "../pages/UsersPage";
+import { SettingsPage } from "../pages/SettingsPage";
+import { ServicesPage } from "../pages/ServicesPage";
+import { EmployeesPage } from "../pages/EmployeesPage";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } });
 
@@ -20,6 +23,9 @@ export function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route index element={<DashboardPage />} />
+                <Route element={<PermissionRoute permission="services.manage" />}><Route path="services" element={<ServicesPage />} /></Route>
+                <Route element={<PermissionRoute permission="employees.manage" />}><Route path="employees" element={<EmployeesPage />} /></Route>
+                <Route element={<PermissionRoute permission="settings.manage" />}><Route path="settings" element={<SettingsPage />} /></Route>
                 <Route element={<PermissionRoute permission="users.manage" />}><Route path="users" element={<UsersPage />} /></Route>
               </Route>
             </Route>

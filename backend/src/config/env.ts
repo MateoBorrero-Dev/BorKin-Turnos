@@ -12,6 +12,8 @@ const schema = z.object({
   JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().max(90).default(7),
   COOKIE_SECURE: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
   LOG_LEVEL: z.string().default("info"),
+  UPLOAD_DIR: z.string().default("../.local/uploads"),
+  MAX_UPLOAD_BYTES: z.coerce.number().int().positive().max(10_000_000).default(2_000_000),
 });
 
 const result = schema.safeParse(process.env);

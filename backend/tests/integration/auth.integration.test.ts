@@ -9,6 +9,18 @@ const employeePassword = "Employee-Test-Password-2026";
 let employeeRoleId: string;
 
 beforeAll(async () => {
+  await prisma.cashMovement.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.cashRegister.deleteMany();
+  await prisma.appointmentStatusEvent.deleteMany();
+  await prisma.appointment.deleteMany();
+  await prisma.scheduleBlock.deleteMany();
+  await prisma.employeeSchedule.deleteMany();
+  await prisma.employeeService.deleteMany();
+  await prisma.service.deleteMany();
+  await prisma.serviceCategory.deleteMany();
+  await prisma.employee.deleteMany();
+  await prisma.client.deleteMany();
   await prisma.refreshSession.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.userPermission.deleteMany();

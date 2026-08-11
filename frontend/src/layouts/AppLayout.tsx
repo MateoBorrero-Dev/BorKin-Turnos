@@ -1,4 +1,4 @@
-import { CalendarDays, LayoutDashboard, LogOut, Menu, Users, X } from "lucide-react";
+import { CalendarDays, LayoutDashboard, LogOut, Menu, Settings, Scissors, UserRoundCog, Users, X } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,6 +12,9 @@ export function AppLayout() {
 
   const nav = [
     { to: "/", label: "Inicio", icon: LayoutDashboard, visible: hasPermission(user.permissions, "dashboard.view") },
+    { to: "/services", label: "Servicios", icon: Scissors, visible: hasPermission(user.permissions, "services.manage") },
+    { to: "/employees", label: "Profesionales", icon: UserRoundCog, visible: hasPermission(user.permissions, "employees.manage") },
+    { to: "/settings", label: "Configuración", icon: Settings, visible: hasPermission(user.permissions, "settings.manage") },
     { to: "/users", label: "Usuarios", icon: Users, visible: hasPermission(user.permissions, "users.manage") },
   ].filter((item) => item.visible);
 
@@ -26,14 +29,14 @@ export function AppLayout() {
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex h-20 items-center justify-between border-b border-slate-100 px-6">
           <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white"><CalendarDays size={21} /></span>
+            <span className="brand-bg grid h-10 w-10 place-items-center rounded-xl text-white"><CalendarDays size={21} /></span>
             <div><p className="font-semibold tracking-tight">BorKin Turnos</p><p className="text-xs text-slate-500">{user.business.name}</p></div>
           </div>
           <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden" onClick={() => setOpen(false)} aria-label="Cerrar menú"><X size={20} /></button>
         </div>
         <nav className="flex-1 space-y-1 p-4" aria-label="Navegación principal">
           {nav.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)} className={({ isActive }) => `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${isActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"}`}>
+            <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)} className={({ isActive }) => `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${isActive ? "nav-active" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"}`}>
               <Icon size={19} />{label}
             </NavLink>
           ))}

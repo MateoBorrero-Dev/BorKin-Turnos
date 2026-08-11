@@ -18,7 +18,8 @@ const permissions = [
 
 async function main() {
   const businessName = process.env.BUSINESS_NAME ?? "BorKin Demo";
-  let business = await prisma.business.findFirst({ where: { name: businessName } });
+  let business = await prisma.business.findFirst({ where: { settings: { some: { key: "seed.initial" } } } });
+  business ??= await prisma.business.findFirst({ where: { name: businessName } });
   business ??= await prisma.business.create({ data: { name: businessName } });
 
   const permissionRows = await Promise.all(permissions.map((code) => prisma.permission.upsert({
@@ -65,6 +66,59 @@ async function main() {
     where: { businessId_key: { businessId: business.id, key: "seed.initial" } },
     update: { value: { applied: true } }, create: { businessId: business.id, key: "seed.initial", value: { applied: true } },
   });
+
+  const categoryData = [
+    { name: "Cabello", description: "Cortes y tratamientos capilares", sortOrder: 10 },
+    { name: "Barba", description: "Perfilado y cuidado de barba", sortOrder: 20 },
+    { name: "Bienestar", description: "Servicios de relajación y bienestar", sortOrder: 30 },
+  ];
+  const categories = new Map<string, string>();
+  for (const item of categoryData) {
+    const category = await prisma.serviceCategory.upsert({
+      where: { businessId_name: { businessId: business.id, name: item.name } },
+      update: { description: item.description, sortOrder: item.sortOrder, active: true, deletedAt: null },
+      create: { businessId: business.id, ...item },
+    });
+    categories.set(item.name, category.id);
+  }
+
+  const serviceData = [
+    { name: "Corte", category: "Cabello", price: "15000.00", durationMinutes: 45, color: "#2563EB" },
+    { name: "Barba", category: "Barba", price: "9000.00", durationMinutes: 30, color: "#0F766E" },
+    { name: "Corte + Barba", category: "Cabello", price: "21000.00", durationMinutes: 75, color: "#7C3AED" },
+    { name: "Masaje 30 minutos", category: "Bienestar", price: "18000.00", durationMinutes: 30, color: "#C2410C" },
+  ];
+  const services = new Map<string, string>();
+  for (const item of serviceData) {
+    const service = await prisma.service.upsert({
+      where: { businessId_name: { businessId: business.id, name: item.name } },
+      update: { categoryId: categories.get(item.category)!, price: item.price, durationMinutes: item.durationMinutes, color: item.color, active: true, deletedAt: null },
+      create: { businessId: business.id, categoryId: categories.get(item.category)!, name: item.name, price: item.price, durationMinutes: item.durationMinutes, color: item.color },
+    });
+    services.set(item.name, service.id);
+  }
+
+  const employeeData = [
+    { firstName: "Juan", lastName: "Pérez", email: "juan.demo@borkin.local", color: "#0F766E", serviceNames: ["Corte", "Barba", "Corte + Barba"] },
+    { firstName: "María", lastName: "Gómez", email: "maria.demo@borkin.local", color: "#C2410C", serviceNames: ["Masaje 30 minutos"] },
+  ];
+  for (const item of employeeData) {
+    const employee = await prisma.employee.upsert({
+      where: { businessId_email: { businessId: business.id, email: item.email } },
+      update: { firstName: item.firstName, lastName: item.lastName, color: item.color, active: true, deletedAt: null },
+      create: { businessId: business.id, firstName: item.firstName, lastName: item.lastName, email: item.email, color: item.color },
+    });
+    await prisma.employeeService.createMany({ data: item.serviceNames.map((name) => ({ employeeId: employee.id, serviceId: services.get(name)! })), skipDuplicates: true });
+    const ranges = item.firstName === "Juan" ? [[540, 780], [900, 1200]] : [[600, 840], [900, 1140]];
+    for (let dayOfWeek = 1; dayOfWeek <= 5; dayOfWeek += 1) {
+      for (const [startMinute, endMinute] of ranges) {
+        await prisma.employeeSchedule.upsert({
+          where: { employeeId_dayOfWeek_startMinute_endMinute: { employeeId: employee.id, dayOfWeek, startMinute: startMinute!, endMinute: endMinute! } },
+          update: {}, create: { employeeId: employee.id, dayOfWeek, startMinute: startMinute!, endMinute: endMinute! },
+        });
+      }
+    }
+  }
   console.info(`Seed aplicado para ${business.name}. Usuario administrador: ${process.env.ADMIN_USERNAME}`);
 }
 

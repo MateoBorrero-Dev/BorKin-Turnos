@@ -8,6 +8,7 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { errorHandler, notFound } from "./middleware/error.middleware.js";
 import { apiRouter } from "./routes/index.js";
+import { uploadsDirectory } from "./services/storage.service.js";
 
 export function createApp() {
   const app = express();
@@ -18,6 +19,7 @@ export function createApp() {
   app.use(cors({ origin: env.FRONTEND_URL, credentials: true, methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"] }));
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
+  app.use("/uploads", express.static(uploadsDirectory, { fallthrough: false, maxAge: "1d" }));
   app.use("/api", apiRouter);
   app.use(notFound);
   app.use(errorHandler);

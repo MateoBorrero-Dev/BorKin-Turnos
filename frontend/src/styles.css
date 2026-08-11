@@ -13,8 +13,14 @@
 }
 
 @layer components {
-  .field { @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10; }
+  .field { @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400; }
+  .field:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 4px var(--brand-soft); }
   .field-error { @apply mt-1.5 block text-xs text-red-600; }
-  .primary-button { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-600/20; }
+  .primary-button { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition focus:outline-none; background: var(--brand-primary, #2563eb); }
+  .primary-button:hover { filter: brightness(.9); }
+  .primary-button:focus { box-shadow: 0 0 0 4px var(--brand-soft); }
   .secondary-button { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200; }
+  .brand-text { color: var(--brand-primary, #2563eb); }
+  .brand-bg { background: var(--brand-primary, #2563eb); }
+  .nav-active { color: var(--brand-primary, #2563eb); background: var(--brand-soft, #dbeafe); }
 }
