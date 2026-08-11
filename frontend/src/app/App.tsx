@@ -10,6 +10,8 @@ import { UsersPage } from "../pages/UsersPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { ServicesPage } from "../pages/ServicesPage";
 import { EmployeesPage } from "../pages/EmployeesPage";
+import { ClientsPage } from "../pages/ClientsPage";
+import { ClientDetailPage } from "../pages/ClientDetailPage";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } });
 
@@ -25,6 +27,7 @@ export function App() {
                 <Route index element={<DashboardPage />} />
                 <Route element={<PermissionRoute permission="services.manage" />}><Route path="services" element={<ServicesPage />} /></Route>
                 <Route element={<PermissionRoute permission="employees.manage" />}><Route path="employees" element={<EmployeesPage />} /></Route>
+                <Route element={<PermissionRoute permission="clients.view" />}><Route path="clients" element={<ClientsPage />} /><Route path="clients/:id" element={<ClientDetailPage />} /></Route>
                 <Route element={<PermissionRoute permission="settings.manage" />}><Route path="settings" element={<SettingsPage />} /></Route>
                 <Route element={<PermissionRoute permission="users.manage" />}><Route path="users" element={<UsersPage />} /></Route>
               </Route>

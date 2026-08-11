@@ -6,7 +6,7 @@ let accessToken: string | null = null;
 let activeRefresh: Promise<AuthPayload> | null = null;
 
 export class ApiClientError extends Error {
-  constructor(message: string, public readonly status: number, public readonly code?: string) {
+  constructor(message: string, public readonly status: number, public readonly code?: string, public readonly details?: unknown) {
     super(message);
     this.name = "ApiClientError";
   }
@@ -23,7 +23,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   const body = await response.json() as ApiEnvelope<T> | ApiErrorBody;
   if (!response.ok || !body.success) {
     const error = body as ApiErrorBody;
-    throw new ApiClientError(error.message ?? "No se pudo completar la operación.", response.status, error.code);
+    throw new ApiClientError(error.message ?? "No se pudo completar la operación.", response.status, error.code, error.details);
   }
   return body.data;
 }
@@ -40,7 +40,8 @@ export async function refreshSession(): Promise<AuthPayload> {
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
   const headers = new Headers(init.headers);
-  if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
+  const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
+  if (init.body && !isFormData && !headers.has("content-type")) headers.set("content-type", "application/json");
   if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
   const response = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: "include" });
   if (response.status === 401 && retryAuth && path !== "/auth/refresh") {

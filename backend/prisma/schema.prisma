@@ -180,10 +180,12 @@ model Client {
   id           String        @id @default(uuid()) @db.Uuid
   businessId   String        @db.Uuid
   firstName    String
-  lastName     String
+  lastName     String?
   phone        String?
+  phoneNormalized String?
   whatsapp     String?
   email        String?
+  emailNormalized String?
   birthDate    DateTime?     @db.Date
   address      String?
   notes        String?
@@ -196,8 +198,8 @@ model Client {
   appointments Appointment[]
   @@index([businessId, active])
   @@index([businessId, lastName, firstName])
-  @@index([businessId, phone])
-  @@index([businessId, email])
+  @@index([businessId, phoneNormalized])
+  @@index([businessId, emailNormalized])
 }
 
 model ServiceCategory {

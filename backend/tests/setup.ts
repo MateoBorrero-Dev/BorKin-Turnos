@@ -7,3 +7,5 @@ process.env.JWT_ACCESS_TTL = "15m";
 process.env.JWT_REFRESH_TTL_DAYS = "7";
 process.env.COOKIE_SECURE = "false";
 process.env.LOG_LEVEL = "silent";
+process.env.UPLOAD_DIR = "../.local/test-uploads";
+process.env.MAX_UPLOAD_BYTES = "2000000";

@@ -8,6 +8,7 @@ const app = createApp();
 const password = "Phase2-Admin-Password-2026";
 let tokenA = ""; let tokenB = ""; let tokenLimited = "";
 let categoryA = ""; let categoryB = ""; let inactiveCategoryA = ""; let serviceA = ""; let serviceB = ""; let employeeA = ""; let employeeB = "";
+let uploadedLogoUrl = "";
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
 async function resetDatabase() {
@@ -51,6 +52,9 @@ describe("configuración del negocio", () => {
   it("rechaza valores inválidos", async () => { expect((await request(app).patch("/api/settings/business").set(auth(tokenA)).send({ timezone: "Zona/Inexistente" })).status).toBe(400); expect((await request(app).patch("/api/settings/business").set(auth(tokenA)).send({ primaryColor: "blue" })).status).toBe(400); });
   it("exige permiso backend", async () => { expect((await request(app).get("/api/settings/business").set(auth(tokenLimited))).status).toBe(403); });
   it("valida la firma real de una imagen", async () => { const response = await request(app).put("/api/settings/business/logo").set(auth(tokenA)).attach("logo", Buffer.from("no es png"), { filename: "fraude.png", contentType: "image/png" }); expect(response.status).toBe(400); expect(response.body.code).toBe("INVALID_IMAGE"); });
+  it("sube un logo PNG válido y lo persiste", async () => { const png = Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,0,0,0,0]); const response = await request(app).put("/api/settings/business/logo").set(auth(tokenA)).attach("logo", png, { filename: "logo.png", contentType: "image/png" }); expect(response.status).toBe(200); expect(response.body.data.logoUrl).toMatch(/^\/uploads\/business\/[0-9a-f-]+\.png$/); uploadedLogoUrl = response.body.data.logoUrl; expect((await prisma.business.findUniqueOrThrow({ where: { id: response.body.data.id } })).logoUrl).toBe(response.body.data.logoUrl); });
+  it("sirve uploads con Content-Type y CORP compatibles con el frontend", async () => { const response = await request(app).get(uploadedLogoUrl); expect(response.status).toBe(200); expect(response.headers["content-type"]).toMatch(/^image\/png/); expect(response.headers["cross-origin-resource-policy"]).toBe("cross-origin"); expect(response.headers["cross-origin-resource-policy"]).not.toBe("same-origin"); const apiResponse = await request(app).get("/api/health"); expect(apiResponse.headers["cross-origin-resource-policy"]).toBe("same-origin"); });
+  it("rechaza una imagen mayor a 2 MB", async () => { const oversized = Buffer.alloc(2_000_001, 0); oversized.set([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]); const response = await request(app).put("/api/settings/business/logo").set(auth(tokenA)).attach("logo", oversized, { filename: "grande.png", contentType: "image/png" }); expect(response.status).toBe(413); expect(response.body.code).toBe("FILE_TOO_LARGE"); });
 });
 
 describe("categorías y servicios", () => {
@@ -65,6 +69,7 @@ describe("categorías y servicios", () => {
 });
 
 describe("profesionales y asignaciones", () => {
+  it("sube una foto PNG válida para un profesional", async () => { const png = Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,0,0,0,0]); const response = await request(app).put(`/api/employees/${employeeA}/photo`).set(auth(tokenA)).attach("photo", png, { filename: "foto.png", contentType: "image/png" }); expect(response.status).toBe(200); expect(response.body.data.photoUrl).toMatch(/^\/uploads\/employees\/[0-9a-f-]+\.png$/); expect((await prisma.employee.findUniqueOrThrow({ where: { id: employeeA } })).photoUrl).toBe(response.body.data.photoUrl); });
   it("crea, edita y desactiva profesional", async () => { const created = await request(app).post("/api/employees").set(auth(tokenA)).send({ firstName: "Julia", lastName: "Test", email: "julia@test.local", color: "#445566" }); expect(created.status).toBe(201); employeeA = created.body.data.id; expect((await request(app).patch(`/api/employees/${employeeA}`).set(auth(tokenA)).send({ phone: "123" })).body.data.phone).toBe("123"); expect((await request(app).patch(`/api/employees/${employeeA}`).set(auth(tokenA)).send({ active: false })).body.data.active).toBe(false); });
   it("no lee ni modifica profesional ajeno", async () => { expect((await request(app).get(`/api/employees/${employeeB}`).set(auth(tokenA))).status).toBe(404); expect((await request(app).patch(`/api/employees/${employeeB}`).set(auth(tokenA)).send({ active: false })).status).toBe(404); });
   it("asigna servicios propios", async () => { const ownService = await prisma.service.findFirstOrThrow({ where: { business: { name: "Negocio A actualizado" } } }); const response = await request(app).put(`/api/employees/${employeeA}/services`).set(auth(tokenA)).send({ serviceIds: [ownService.id] }); expect(response.status).toBe(200); expect(response.body.data).toHaveLength(1); });

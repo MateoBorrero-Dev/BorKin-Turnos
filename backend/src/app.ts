@@ -19,7 +19,16 @@ export function createApp() {
   app.use(cors({ origin: env.FRONTEND_URL, credentials: true, methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"] }));
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
-  app.use("/uploads", express.static(uploadsDirectory, { fallthrough: false, maxAge: "1d" }));
+  app.use("/uploads", express.static(uploadsDirectory, {
+    fallthrough: false,
+    maxAge: "1d",
+    setHeaders: (response) => {
+      // Las imágenes viven en el origen del backend y se embeben desde el
+      // frontend. La excepción CORP se limita estrictamente a archivos servidos
+      // por /uploads; Helmet conserva su política general para el resto.
+      response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    },
+  }));
   app.use("/api", apiRouter);
   app.use(notFound);
   app.use(errorHandler);

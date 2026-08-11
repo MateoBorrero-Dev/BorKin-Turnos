@@ -7,7 +7,7 @@ export type AuthUser = {
 export type AuthPayload = { accessToken: string; user: AuthUser };
 export type PageMeta = { page: number; pageSize: number; total: number; totalPages: number };
 export type ApiEnvelope<T> = { success: true; data: T; meta?: PageMeta };
-export type ApiErrorBody = { success: false; message: string; code?: string };
+export type ApiErrorBody = { success: false; message: string; code?: string; details?: unknown };
 export type UserRow = {
   id: string; username: string; email: string; firstName: string; lastName: string; active: boolean; lastLoginAt: string | null;
   role: RoleSummary; permissions: Array<{ effect: "ALLOW" | "DENY"; permission: { id: string; code: string; name: string } }>;
@@ -21,3 +21,9 @@ export type Employee = { id: string; firstName: string; lastName: string; phone:
 export type EmployeeDetail = Employee & { services: Array<{ serviceId: string; service: Service }>; schedules: ScheduleInterval[] };
 export type ScheduleInterval = { id?: string; dayOfWeek: number; startTime: string; endTime: string; startMinute?: number; endMinute?: number };
 export type ScheduleBlock = { id: string; employeeId: string; startAt: string; endAt: string; allDay: boolean; reason: string; customReason: string | null; employee: { id: string; firstName: string; lastName: string } };
+export type Client = {
+  id: string; firstName: string; lastName: string | null; fullName: string; phone: string | null; phoneNormalized: string | null;
+  email: string | null; birthDate: string | null; notes: string | null; active: boolean; createdAt: string; updatedAt: string;
+};
+export type ClientPage = { items: Client[]; meta: PageMeta };
+export type DuplicateClient = { id: string; fullName: string; phone: string | null; email: string | null; reasons: Array<"phone" | "email"> };

@@ -38,8 +38,11 @@ async function main() {
   });
 
   await prisma.rolePermission.createMany({ data: permissionRows.map((permission) => ({ roleId: adminRole.id, permissionId: permission.id })), skipDuplicates: true });
-  const dashboardPermission = permissionRows.find((item) => item.code === "dashboard.view")!;
-  await prisma.rolePermission.createMany({ data: [{ roleId: employeeRole.id, permissionId: dashboardPermission.id }], skipDuplicates: true });
+  const employeePermissionCodes = new Set(["dashboard.view", "clients.view", "clients.manage"]);
+  await prisma.rolePermission.createMany({
+    data: permissionRows.filter((item) => employeePermissionCodes.has(item.code)).map((permission) => ({ roleId: employeeRole.id, permissionId: permission.id })),
+    skipDuplicates: true,
+  });
 
   const passwordHash = await argon2.hash(process.env.ADMIN_PASSWORD!, { type: argon2.argon2id });
   await prisma.user.upsert({
@@ -119,7 +122,21 @@ async function main() {
       }
     }
   }
-  console.info(`Seed aplicado para ${business.name}. Usuario administrador: ${process.env.ADMIN_USERNAME}`);
+
+  // Clientes demo identificados por email o teléfono normalizado. No existe una
+  // restricción unique porque V1 permite confirmar duplicados familiares.
+  const clientData = [
+    { firstName: "Juan", lastName: "Pérez", phone: "+54 9 351 555 0101", phoneNormalized: "5493515550101", email: "juan.perez@demo.local", emailNormalized: "juan.perez@demo.local", notes: "Prefiere turnos por la tarde." },
+    { firstName: "María", lastName: "González", phone: "+54 9 351 555 0102", phoneNormalized: "5493515550102", email: "maria.gonzalez@demo.local", emailNormalized: "maria.gonzalez@demo.local", birthDate: new Date("1992-05-18T00:00:00.000Z") },
+    { firstName: "Carlos", lastName: "Fernández", phone: "+54 9 351 555 0103", phoneNormalized: "5493515550103", email: null, emailNormalized: null },
+  ];
+  for (const item of clientData) {
+    const current = await prisma.client.findFirst({ where: { businessId: business.id, OR: [{ phoneNormalized: item.phoneNormalized }, ...(item.emailNormalized ? [{ emailNormalized: item.emailNormalized }] : [])] } });
+    if (current) await prisma.client.update({ where: { id: current.id }, data: { ...item, active: true, deletedAt: null } });
+    else await prisma.client.create({ data: { businessId: business.id, ...item } });
+  }
+  const clientCount = await prisma.client.count({ where: { businessId: business.id } });
+  console.info(`Seed aplicado para ${business.name}. Usuario administrador: ${process.env.ADMIN_USERNAME}. Clientes: ${clientCount}`);
 }
 
 main().finally(async () => prisma.$disconnect());

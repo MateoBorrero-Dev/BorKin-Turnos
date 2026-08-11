@@ -1,0 +1,34 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, CalendarDays, Mail, MessageCircle, Pencil, Phone, UserRoundCheck, UserRoundX } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { ClientFormModal } from "../components/ClientFormModal";
+import { Modal } from "../components/Modal";
+import { useAuth } from "../hooks/useAuth";
+import { apiRequest } from "../services/api/client";
+import type { Client } from "../types/api";
+import { hasPermission } from "../utils/permissions";
+
+const message = (error: unknown) => error instanceof Error ? error.message : "No se pudo completar la operación.";
+
+export function ClientDetailPage() {
+  const { id = "" } = useParams(); const navigate = useNavigate(); const queryClient = useQueryClient(); const { user } = useAuth(); const [editing, setEditing] = useState(false); const [confirming, setConfirming] = useState(false);
+  const query = useQuery({ queryKey: ["client", id], queryFn: () => apiRequest<Client>(`/clients/${id}`), enabled: Boolean(id) });
+  const canManage = Boolean(user && hasPermission(user.permissions, "clients.manage"));
+  const status = useMutation({ mutationFn: (client: Client) => apiRequest<Client>(`/clients/${client.id}/${client.active ? "disable" : "reactivate"}`, { method: "POST" }), onSuccess: async (client) => { toast.success(client.active ? "Cliente reactivado." : "Cliente desactivado."); setConfirming(false); await queryClient.invalidateQueries({ queryKey: ["client", id] }); await queryClient.invalidateQueries({ queryKey: ["clients"] }); }, onError: (error) => toast.error(message(error)) });
+  if (query.isLoading) return <div className="h-96 animate-pulse rounded-2xl bg-slate-100" />;
+  if (query.isError || !query.data) return <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center"><p className="font-medium">No pudimos abrir la ficha.</p><p className="mt-2 text-sm text-slate-500">{message(query.error)}</p><Link className="secondary-button mt-5" to="/clients">Volver a clientes</Link></div>;
+  const client = query.data; const whatsApp = client.phoneNormalized && /^\d{8,15}$/.test(client.phoneNormalized) ? `https://wa.me/${client.phoneNormalized}` : null;
+  const date = (value: string) => new Intl.DateTimeFormat("es-AR", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00.000Z`));
+  return <div className="space-y-6"><Link className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900" to="/clients"><ArrowLeft size={17} />Volver a clientes</Link>
+    <header className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight">{client.fullName}</h1><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${client.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{client.active ? "Activo" : "Inactivo"}</span></div><p className="mt-2 text-sm text-slate-500">Cliente desde {new Intl.DateTimeFormat("es-AR", { dateStyle: "long" }).format(new Date(client.createdAt))}</p></div>{canManage && <div className="flex flex-col gap-2 sm:flex-row"><button className="secondary-button" onClick={() => setEditing(true)}><Pencil size={16} />Editar</button><button className="secondary-button" onClick={() => setConfirming(true)}>{client.active ? <UserRoundX size={16} /> : <UserRoundCheck size={16} />}{client.active ? "Desactivar" : "Reactivar"}</button></div>}</header>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.72fr)]"><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="font-semibold">Información de contacto</h2><dl className="mt-5 grid gap-5 sm:grid-cols-2"><Info icon={<Phone size={17} />} label="Teléfono" value={client.phone ?? "No informado"} /><Info icon={<Mail size={17} />} label="Email" value={client.email ?? "No informado"} /><Info icon={<CalendarDays size={17} />} label="Nacimiento" value={client.birthDate ? date(client.birthDate) : "No informado"} /></dl>{whatsApp && <a className="secondary-button mt-6 w-full sm:w-auto" href={whatsApp} target="_blank" rel="noreferrer"><MessageCircle size={17} />Abrir WhatsApp</a>}</section>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="font-semibold">Notas</h2><p className={`mt-4 whitespace-pre-wrap text-sm leading-7 ${client.notes ? "text-slate-700" : "text-slate-400"}`}>{client.notes || "No hay notas generales para este cliente."}</p></section></div>
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="font-semibold">Historial</h2><div className="mt-5 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center"><CalendarDays className="mx-auto text-slate-300" size={34} /><p className="mt-3 text-sm font-medium text-slate-700">Este cliente todavía no tiene turnos registrados.</p><p className="mt-1 text-xs text-slate-500">Los turnos reales aparecerán aquí cuando se implemente la agenda.</p></div></section>
+    {editing && <ClientFormModal client={client} onClose={() => setEditing(false)} onSaved={async () => { await queryClient.invalidateQueries({ queryKey: ["client", id] }); await queryClient.invalidateQueries({ queryKey: ["clients"] }); }} onViewDuplicate={(duplicateId) => navigate(`/clients/${duplicateId}`)} />}
+    {confirming && <Modal title={client.active ? "¿Desactivar este cliente?" : "¿Reactivar este cliente?"} onClose={() => setConfirming(false)}><p className="text-sm leading-6 text-slate-600">{client.active ? "Su información e historial se conservarán, pero dejará de aparecer entre los clientes activos para nuevas operaciones." : "Volverá a aparecer entre los clientes activos y podrá seleccionarse en operaciones futuras."}</p><div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button className="secondary-button" onClick={() => setConfirming(false)}>Cancelar</button><button className="primary-button" disabled={status.isPending} onClick={() => status.mutate(client)}>{status.isPending ? "Guardando…" : client.active ? "Desactivar cliente" : "Reactivar cliente"}</button></div></Modal>}
+  </div>;
+}
+
+function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) { return <div className="min-w-0"><dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{icon}{label}</dt><dd className="mt-2 break-words text-sm text-slate-700">{value}</dd></div>; }
