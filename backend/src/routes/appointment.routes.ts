@@ -1,0 +1,20 @@
+import { Router } from "express";
+import * as controller from "../controllers/appointment.controller.js";
+import { authenticate, requirePermission } from "../middleware/auth.middleware.js";
+import { validateBody } from "../middleware/validate.middleware.js";
+import { createAppointmentSchema, reasonSchema, rescheduleAppointmentSchema, updateAppointmentSchema } from "../validators/appointment.validators.js";
+
+export const appointmentRouter = Router();
+appointmentRouter.use(authenticate);
+appointmentRouter.get("/options", requirePermission("appointments.view"), controller.options);
+appointmentRouter.get("/availability", requirePermission("appointments.view"), controller.availability);
+appointmentRouter.get("/", requirePermission("appointments.view"), controller.list);
+appointmentRouter.post("/", requirePermission("appointments.create"), validateBody(createAppointmentSchema), controller.create);
+appointmentRouter.get("/:id", requirePermission("appointments.view"), controller.get);
+appointmentRouter.patch("/:id", requirePermission("appointments.edit"), validateBody(updateAppointmentSchema), controller.update);
+appointmentRouter.post("/:id/reschedule", requirePermission("appointments.edit"), validateBody(rescheduleAppointmentSchema), controller.reschedule);
+appointmentRouter.post("/:id/confirm", requirePermission("appointments.edit"), controller.confirm);
+appointmentRouter.post("/:id/start", requirePermission("appointments.edit"), controller.start);
+appointmentRouter.post("/:id/complete", requirePermission("appointments.edit"), controller.complete);
+appointmentRouter.post("/:id/cancel", requirePermission("appointments.cancel"), validateBody(reasonSchema), controller.cancel);
+appointmentRouter.post("/:id/no-show", requirePermission("appointments.edit"), validateBody(reasonSchema.partial()), controller.noShow);

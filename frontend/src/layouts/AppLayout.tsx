@@ -12,6 +12,7 @@ export function AppLayout() {
 
   const nav = [
     { to: "/", label: "Inicio", icon: LayoutDashboard, visible: hasPermission(user.permissions, "dashboard.view") },
+    { to: "/agenda", label: "Agenda", icon: CalendarDays, visible: hasPermission(user.permissions, "appointments.view") },
     { to: "/services", label: "Servicios", icon: Scissors, visible: hasPermission(user.permissions, "services.manage") },
     { to: "/employees", label: "Profesionales", icon: UserRoundCog, visible: hasPermission(user.permissions, "employees.manage") },
     { to: "/clients", label: "Clientes", icon: ContactRound, visible: hasPermission(user.permissions, "clients.view") },

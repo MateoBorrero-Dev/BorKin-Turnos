@@ -312,6 +312,7 @@ model Appointment {
   startAt         DateTime                 @db.Timestamptz(3)
   endAt           DateTime                 @db.Timestamptz(3)
   durationMinutes Int
+  serviceName     String
   price           Decimal                  @db.Decimal(14, 2)
   status          AppointmentStatus        @default(PENDIENTE)
   notes           String?
@@ -329,6 +330,7 @@ model Appointment {
   statusEvents    AppointmentStatusEvent[]
   @@index([businessId, startAt])
   @@index([businessId, employeeId, startAt, endAt])
+  @@index([businessId, employeeId, status, startAt])
   @@index([businessId, clientId, startAt])
   @@index([businessId, status, startAt])
 }

@@ -14,6 +14,7 @@ export type ClientInput = Partial<{
 }>;
 type ListQuery = { page: number; pageSize: number; search: string; status: "all" | "active" | "inactive" };
 type OptionsQuery = { search: string; limit: number };
+type AppointmentQuery = { page: number; pageSize: number };
 
 export function normalizePhone(phone: string | null | undefined) {
   if (!phone) return null;
@@ -85,6 +86,25 @@ export async function getClient(businessId: string, id: string) {
   const row = await prisma.client.findFirst({ where: { id, businessId, deletedAt: null }, select: clientSelect });
   if (!row) throw new ApiError(404, "Cliente no encontrado.", "CLIENT_NOT_FOUND");
   return view(row);
+}
+
+export async function clientAppointments(businessId: string, clientId: string, query: AppointmentQuery) {
+  const client = await prisma.client.findFirst({ where: { id: clientId, businessId, deletedAt: null }, select: { id: true } });
+  if (!client) throw new ApiError(404, "Cliente no encontrado.", "CLIENT_NOT_FOUND");
+  const now = new Date();
+  const where: Prisma.AppointmentWhereInput = { businessId, clientId };
+  const [items, total, completedCount, lastVisit, nextAppointment] = await prisma.$transaction([
+    prisma.appointment.findMany({
+      where,
+      select: { id: true, startAt: true, endAt: true, serviceName: true, price: true, status: true, employee: { select: { id: true, firstName: true, lastName: true } } },
+      orderBy: [{ startAt: "desc" }, { createdAt: "desc" }], skip: (query.page - 1) * query.pageSize, take: query.pageSize,
+    }),
+    prisma.appointment.count({ where }),
+    prisma.appointment.count({ where: { ...where, status: "COMPLETADO" } }),
+    prisma.appointment.findFirst({ where: { ...where, status: "COMPLETADO", startAt: { lte: now } }, select: { id: true, startAt: true }, orderBy: { startAt: "desc" } }),
+    prisma.appointment.findFirst({ where: { ...where, status: { in: ["PENDIENTE", "CONFIRMADO"] }, startAt: { gte: now } }, select: { id: true, startAt: true, serviceName: true }, orderBy: { startAt: "asc" } }),
+  ]);
+  return { items, meta: paginationMeta(query.page, query.pageSize, total), summary: { appointmentCount: total, completedCount, lastVisit, nextAppointment } };
 }
 
 async function possibleDuplicates(businessId: string, input: ClientInput, excludeId?: string) {
