@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import * as appointments from "../services/appointment.service.js";
+import * as payments from "../services/payment.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { appointmentAvailabilityQuerySchema, appointmentIdSchema, appointmentListQuerySchema, appointmentOptionsQuerySchema } from "../validators/appointment.validators.js";
 
@@ -15,6 +16,7 @@ export async function update(req: Request, res: Response) { const auth = actor(r
 export async function reschedule(req: Request, res: Response) { const auth = actor(req); res.json({ success: true, data: await appointments.updateAppointment(auth.businessId, auth.id, id(req), req.body) }); }
 export async function confirm(req: Request, res: Response) { const auth = actor(req); res.json({ success: true, data: await appointments.transitionAppointment(auth.businessId, auth.id, id(req), "CONFIRMADO") }); }
 export async function start(req: Request, res: Response) { const auth = actor(req); res.json({ success: true, data: await appointments.transitionAppointment(auth.businessId, auth.id, id(req), "EN_CURSO") }); }
-export async function complete(req: Request, res: Response) { const auth = actor(req); res.json({ success: true, data: await appointments.transitionAppointment(auth.businessId, auth.id, id(req), "COMPLETADO") }); }
+export async function complete(_req: Request, _res: Response) { throw new ApiError(409, "Para completar el turno, registrá el cobro.", "PAYMENT_REQUIRED"); }
+export async function charge(req: Request, res: Response) { const auth = actor(req); res.status(201).json({ success: true, data: await payments.completeAppointmentAndCharge(auth.businessId, { userId: auth.id, canAdjustAmount: auth.permissions.includes("payments.adjust_amount"), ipAddress: req.ip }, id(req), req.body) }); }
 export async function cancel(req: Request, res: Response) { const auth = actor(req); res.json({ success: true, data: await appointments.transitionAppointment(auth.businessId, auth.id, id(req), "CANCELADO", req.body.reason) }); }
 export async function noShow(req: Request, res: Response) { const auth = actor(req); res.json({ success: true, data: await appointments.transitionAppointment(auth.businessId, auth.id, id(req), "AUSENTE", req.body.reason) }); }

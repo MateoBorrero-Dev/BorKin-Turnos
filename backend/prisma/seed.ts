@@ -13,7 +13,8 @@ const prisma = new PrismaClient({ adapter });
 
 const permissions = [
   "dashboard.view", "appointments.view", "appointments.create", "appointments.edit", "appointments.cancel",
-  "clients.view", "clients.manage", "services.manage", "employees.manage", "cash.view", "cash.manage",
+  "clients.view", "clients.manage", "services.manage", "employees.manage", "cash.view", "cash.manage", "cash.open", "cash.close", "cash.movements",
+  "payments.charge", "payments.adjust_amount",
   "reports.view", "statistics.view", "settings.manage", "users.manage",
 ] as const;
 
@@ -39,7 +40,7 @@ async function main() {
   });
 
   await prisma.rolePermission.createMany({ data: permissionRows.map((permission) => ({ roleId: adminRole.id, permissionId: permission.id })), skipDuplicates: true });
-  const employeePermissionCodes = new Set(["dashboard.view", "appointments.view", "appointments.create", "appointments.edit", "appointments.cancel", "clients.view", "clients.manage"]);
+  const employeePermissionCodes = new Set(["dashboard.view", "appointments.view", "appointments.create", "appointments.edit", "appointments.cancel", "clients.view", "clients.manage", "cash.view", "cash.open", "cash.close", "payments.charge"]);
   await prisma.rolePermission.createMany({
     data: permissionRows.filter((item) => employeePermissionCodes.has(item.code)).map((permission) => ({ roleId: employeeRole.id, permissionId: permission.id })),
     skipDuplicates: true,
@@ -56,14 +57,14 @@ async function main() {
   });
 
   const methods = [
-    ["EFECTIVO", "Efectivo", true], ["TRANSFERENCIA", "Transferencia", false], ["DEBITO", "Débito", false],
-    ["CREDITO", "Crédito", false], ["MERCADO_PAGO", "Mercado Pago", false], ["OTRO", "Otro", false],
+    ["EFECTIVO", "Efectivo", "CASH", 10], ["TRANSFERENCIA", "Transferencia", "TRANSFER", 20], ["DEBITO", "Débito", "DEBIT_CARD", 30],
+    ["CREDITO", "Crédito", "CREDIT_CARD", 40], ["MERCADO_PAGO", "Mercado Pago", "OTHER", 50], ["OTRO", "Otro", "OTHER", 60],
   ] as const;
-  for (const [code, name, isCash] of methods) {
+  for (const [code, name, kind, sortOrder] of methods) {
     await prisma.paymentMethod.upsert({
       where: { businessId_code: { businessId: business.id, code } },
-      update: { name, isCash, active: true },
-      create: { businessId: business.id, code, name, isCash },
+      update: { name, kind, isCash: kind === "CASH", sortOrder, active: true },
+      create: { businessId: business.id, code, name, kind, isCash: kind === "CASH", sortOrder },
     });
   }
   await prisma.appSetting.upsert({
@@ -118,10 +119,8 @@ async function main() {
     const ranges = item.firstName === "Juan" ? [[540, 780], [900, 1200]] : [[600, 840], [900, 1140]];
     for (let dayOfWeek = 1; dayOfWeek <= 5; dayOfWeek += 1) {
       for (const [startMinute, endMinute] of ranges) {
-        await prisma.employeeSchedule.upsert({
-          where: { employeeId_dayOfWeek_startMinute_endMinute: { employeeId: employee.id, dayOfWeek, startMinute: startMinute!, endMinute: endMinute! } },
-          update: {}, create: { employeeId: employee.id, dayOfWeek, startMinute: startMinute!, endMinute: endMinute! },
-        });
+        const existingRange = await prisma.employeeSchedule.findFirst({ where: { employeeId: employee.id, dayOfWeek, startMinute: { lt: endMinute! }, endMinute: { gt: startMinute! } }, select: { id: true } });
+        if (!existingRange) await prisma.employeeSchedule.create({ data: { employeeId: employee.id, dayOfWeek, startMinute: startMinute!, endMinute: endMinute! } });
       }
     }
   }

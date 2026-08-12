@@ -37,12 +37,23 @@ enum CashRegisterStatus {
 
 enum CashMovementType {
   INGRESO
+  VENTA
+  INGRESO_MANUAL
   EGRESO
+  RETIRO
 }
 
 enum PaymentStatus {
   REGISTRADO
   REVERTIDO
+}
+
+enum PaymentMethodKind {
+  CASH
+  DEBIT_CARD
+  CREDIT_CARD
+  TRANSFER
+  OTHER
 }
 
 model Business {
@@ -142,6 +153,7 @@ model User {
   createdAppointments Appointment[]            @relation("AppointmentCreator")
   appointmentEvents   AppointmentStatusEvent[]
   paymentsRecorded    Payment[]                @relation("PaymentRecorder")
+  paymentsReversed    Payment[]                @relation("PaymentReverser")
   registersOpened     CashRegister[]           @relation("CashOpenedBy")
   registersClosed     CashRegister[]           @relation("CashClosedBy")
   cashMovements       CashMovement[]           @relation("CashMovementCreator")
@@ -355,6 +367,7 @@ model PaymentMethod {
   businessId    String         @db.Uuid
   name          String
   code          String
+  kind          PaymentMethodKind @default(OTHER)
   isCash        Boolean        @default(false)
   active        Boolean        @default(true)
   sortOrder     Int            @default(0)
@@ -373,7 +386,9 @@ model Payment {
   paymentMethodId String        @db.Uuid
   cashRegisterId  String        @db.Uuid
   recordedById    String        @db.Uuid
+  reversedById    String?       @db.Uuid
   amount          Decimal       @db.Decimal(14, 2)
+  adjustmentReason String?
   status          PaymentStatus @default(REGISTRADO)
   reversedAt      DateTime?     @db.Timestamptz(3)
   reversalReason  String?
@@ -384,6 +399,7 @@ model Payment {
   paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
   cashRegister    CashRegister  @relation(fields: [cashRegisterId], references: [id], onDelete: Restrict)
   recordedBy      User          @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
+  reversedBy      User?         @relation("PaymentReverser", fields: [reversedById], references: [id], onDelete: Restrict)
   cashMovement    CashMovement?
   @@index([businessId, appointmentId, status])
   @@index([businessId, createdAt])
@@ -398,9 +414,11 @@ model CashRegister {
   openedAt      DateTime           @default(now()) @db.Timestamptz(3)
   closedAt      DateTime?          @db.Timestamptz(3)
   openingAmount Decimal            @db.Decimal(14, 2)
+  openingNotes  String?
   expectedCash  Decimal?           @db.Decimal(14, 2)
   countedCash   Decimal?           @db.Decimal(14, 2)
   difference    Decimal?           @db.Decimal(14, 2)
+  closingNotes  String?
   createdAt     DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime           @updatedAt @db.Timestamptz(3)
   business      Business           @relation(fields: [businessId], references: [id], onDelete: Restrict)

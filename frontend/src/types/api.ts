@@ -28,6 +28,8 @@ export type Client = {
 export type ClientPage = { items: Client[]; meta: PageMeta };
 export type DuplicateClient = { id: string; fullName: string; phone: string | null; email: string | null; reasons: Array<"phone" | "email"> };
 export type AppointmentStatus = "PENDIENTE" | "CONFIRMADO" | "EN_CURSO" | "COMPLETADO" | "CANCELADO" | "AUSENTE";
+export type PaymentMethodKind = "CASH" | "DEBIT_CARD" | "CREDIT_CARD" | "TRANSFER" | "OTHER";
+export type Payment = { id: string; amount: string; status: "REGISTRADO" | "REVERTIDO"; adjustmentReason: string | null; createdAt: string; paymentMethod: { id: string; name: string; kind: PaymentMethodKind }; recordedBy: { id: string; firstName: string; lastName: string } };
 export type Appointment = {
   id: string; clientId: string; serviceId: string; employeeId: string; startAt: string; endAt: string;
   durationMinutes: number; serviceName: string; price: string; status: AppointmentStatus; notes: string | null; version: number;
@@ -35,6 +37,7 @@ export type Appointment = {
   service: { id: string; name: string; color: string; active: boolean };
   employee: { id: string; firstName: string; lastName: string; color: string; photoUrl: string | null; active: boolean };
   statusEvents: Array<{ id: string; fromStatus: AppointmentStatus | null; toStatus: AppointmentStatus; reason: string | null; createdAt: string; user: { firstName: string; lastName: string } }>;
+  payments: Payment[];
 };
 export type AgendaBlock = { id: string; employeeId: string | null; startAt: string; endAt: string; allDay: boolean; reason: string; customReason: string | null; employee: { id: string; firstName: string; lastName: string; color: string } | null };
 export type AgendaData = { appointments: Appointment[]; blocks: AgendaBlock[] };
@@ -44,7 +47,14 @@ export type AppointmentOptions = {
 };
 export type Availability = { date: string; timezone: string; durationMinutes: number; slotMinutes: number; slots: Array<{ date: string; time: string; startAt: string; endAt: string; durationMinutes: number }> };
 export type ClientAppointmentHistory = {
-  items: Array<{ id: string; startAt: string; endAt: string; serviceName: string; price: string; status: AppointmentStatus; employee: { id: string; firstName: string; lastName: string } }>;
+  items: Array<{ id: string; startAt: string; endAt: string; serviceName: string; price: string; status: AppointmentStatus; employee: { id: string; firstName: string; lastName: string }; payments: Array<{ id: string; amount: string; paymentMethod: { name: string; kind: PaymentMethodKind } }> }>;
   meta: PageMeta;
   summary: { appointmentCount: number; completedCount: number; lastVisit: { id: string; startAt: string } | null; nextAppointment: { id: string; startAt: string; serviceName: string } | null };
 };
+export type PaymentMethodOption = { id: string; name: string; kind: PaymentMethodKind };
+export type CashMovementType = "VENTA" | "INGRESO_MANUAL" | "EGRESO" | "RETIRO";
+export type CashMovement = { id: string; type: CashMovementType; concept: string; amount: string; occurredAt: string; paymentMethod: PaymentMethodOption | null; createdBy: { id: string; firstName: string; lastName: string } };
+export type CashTotals = { paymentCount: number; totalPayments: string; totalSales: string; cashSales: string; nonCashSales: string; manualIncome: string; expenses: string; withdrawals: string; expectedCash: string; byMethod: Array<PaymentMethodOption & { paymentMethodId: string; amount: string; count: number }> };
+export type CashRegister = { id: string; status: "ABIERTA" | "CERRADA"; openedAt: string; closedAt: string | null; openingAmount: string; openingNotes: string | null; expectedCash: string | null; countedCash: string | null; difference: string | null; closingNotes: string | null; openedBy: { id: string; firstName: string; lastName: string }; closedBy: { id: string; firstName: string; lastName: string } | null; totals: CashTotals; recentMovements: CashMovement[] };
+export type CashHistoryPage = { items: CashRegister[]; meta: PageMeta };
+export type CashMovementPage = { items: CashMovement[]; meta: PageMeta };

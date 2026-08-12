@@ -5,6 +5,7 @@ import { authRouter } from "./auth.routes.js";
 import { blockRouter, categoryRouter, employeeRouter, serviceRouter, settingsRouter } from "./phase2.routes.js";
 import { clientRouter } from "./client.routes.js";
 import { appointmentRouter } from "./appointment.routes.js";
+import { cashRouter, paymentMethodRouter } from "./cash.routes.js";
 
 export const apiRouter = Router();
 apiRouter.get("/health", health);
@@ -18,3 +19,5 @@ apiRouter.use("/employees", employeeRouter);
 apiRouter.use("/schedule-blocks", blockRouter);
 apiRouter.use("/clients", clientRouter);
 apiRouter.use("/appointments", appointmentRouter);
+apiRouter.use("/cash", cashRouter);
+apiRouter.use("/payment-methods", paymentMethodRouter);

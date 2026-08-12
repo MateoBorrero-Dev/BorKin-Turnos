@@ -8,6 +8,7 @@ const includeAppointment = {
   client: { select: { id: true, firstName: true, lastName: true, phone: true, phoneNormalized: true, whatsapp: true, active: true } },
   service: { select: { id: true, name: true, color: true, active: true } },
   employee: { select: { id: true, firstName: true, lastName: true, color: true, photoUrl: true, active: true } },
+  payments: { orderBy: { createdAt: "desc" as const }, select: { id: true, amount: true, status: true, adjustmentReason: true, createdAt: true, paymentMethod: { select: { id: true, name: true, kind: true } }, recordedBy: { select: { id: true, firstName: true, lastName: true } } } },
   statusEvents: { orderBy: { createdAt: "asc" as const }, select: { id: true, fromStatus: true, toStatus: true, reason: true, createdAt: true, user: { select: { firstName: true, lastName: true } } } },
 };
 
@@ -177,7 +178,7 @@ export async function updateAppointment(businessId: string, userId: string, id: 
   } catch (error) { if (overlapConstraint(error)) throw new ApiError(409, "El profesional acaba de recibir otro turno en ese horario.", "APPOINTMENT_CONFLICT"); throw error; }
 }
 
-const transitions: Record<AppointmentStatus, AppointmentStatus[]> = { PENDIENTE: ["CONFIRMADO", "EN_CURSO", "CANCELADO", "AUSENTE"], CONFIRMADO: ["EN_CURSO", "CANCELADO", "AUSENTE"], EN_CURSO: ["COMPLETADO"], COMPLETADO: [], CANCELADO: [], AUSENTE: [] };
+const transitions: Record<AppointmentStatus, AppointmentStatus[]> = { PENDIENTE: ["CONFIRMADO", "EN_CURSO", "CANCELADO", "AUSENTE"], CONFIRMADO: ["EN_CURSO", "CANCELADO", "AUSENTE"], EN_CURSO: [], COMPLETADO: [], CANCELADO: [], AUSENTE: [] };
 
 export async function transitionAppointment(businessId: string, userId: string, id: string, toStatus: AppointmentStatus, reason?: string) {
   await prisma.$transaction(async (tx) => {

@@ -3,6 +3,7 @@ import * as controller from "../controllers/appointment.controller.js";
 import { authenticate, requirePermission } from "../middleware/auth.middleware.js";
 import { validateBody } from "../middleware/validate.middleware.js";
 import { createAppointmentSchema, reasonSchema, rescheduleAppointmentSchema, updateAppointmentSchema } from "../validators/appointment.validators.js";
+import { chargeAppointmentSchema } from "../validators/cash.validators.js";
 
 export const appointmentRouter = Router();
 appointmentRouter.use(authenticate);
@@ -16,5 +17,6 @@ appointmentRouter.post("/:id/reschedule", requirePermission("appointments.edit")
 appointmentRouter.post("/:id/confirm", requirePermission("appointments.edit"), controller.confirm);
 appointmentRouter.post("/:id/start", requirePermission("appointments.edit"), controller.start);
 appointmentRouter.post("/:id/complete", requirePermission("appointments.edit"), controller.complete);
+appointmentRouter.post("/:id/charge", requirePermission("payments.charge"), validateBody(chargeAppointmentSchema), controller.charge);
 appointmentRouter.post("/:id/cancel", requirePermission("appointments.cancel"), validateBody(reasonSchema), controller.cancel);
 appointmentRouter.post("/:id/no-show", requirePermission("appointments.edit"), validateBody(reasonSchema.partial()), controller.noShow);

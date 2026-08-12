@@ -96,7 +96,7 @@ export async function clientAppointments(businessId: string, clientId: string, q
   const [items, total, completedCount, lastVisit, nextAppointment] = await prisma.$transaction([
     prisma.appointment.findMany({
       where,
-      select: { id: true, startAt: true, endAt: true, serviceName: true, price: true, status: true, employee: { select: { id: true, firstName: true, lastName: true } } },
+      select: { id: true, startAt: true, endAt: true, serviceName: true, price: true, status: true, employee: { select: { id: true, firstName: true, lastName: true } }, payments: { where: { status: "REGISTRADO" }, select: { id: true, amount: true, paymentMethod: { select: { name: true, kind: true } } }, take: 1 } },
       orderBy: [{ startAt: "desc" }, { createdAt: "desc" }], skip: (query.page - 1) * query.pageSize, take: query.pageSize,
     }),
     prisma.appointment.count({ where }),

@@ -1,4 +1,4 @@
-import { CalendarDays, ContactRound, LayoutDashboard, LogOut, Menu, Settings, Scissors, UserRoundCog, Users, X } from "lucide-react";
+import { CalendarDays, ContactRound, LayoutDashboard, LogOut, Menu, Settings, Scissors, UserRoundCog, Users, WalletCards, X } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ export function AppLayout() {
     { to: "/services", label: "Servicios", icon: Scissors, visible: hasPermission(user.permissions, "services.manage") },
     { to: "/employees", label: "Profesionales", icon: UserRoundCog, visible: hasPermission(user.permissions, "employees.manage") },
     { to: "/clients", label: "Clientes", icon: ContactRound, visible: hasPermission(user.permissions, "clients.view") },
+    { to: "/cash", label: "Caja", icon: WalletCards, visible: hasPermission(user.permissions, "cash.view") },
     { to: "/settings", label: "Configuración", icon: Settings, visible: hasPermission(user.permissions, "settings.manage") },
     { to: "/users", label: "Usuarios", icon: Users, visible: hasPermission(user.permissions, "users.manage") },
   ].filter((item) => item.visible);
