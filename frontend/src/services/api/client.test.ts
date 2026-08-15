@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiRequest, assetUrl, setAccessToken } from "./client";
+import { apiDownload, apiRequest, assetUrl, setAccessToken } from "./client";
 
 afterEach(() => { vi.unstubAllGlobals(); setAccessToken(null); });
 
@@ -29,5 +29,16 @@ describe("cliente HTTP", () => {
   it("resuelve /uploads contra el origen configurado de la API", () => {
     expect(assetUrl("/uploads/business/logo.png")).toBe("http://localhost:3000/uploads/business/logo.png");
     expect(assetUrl(null)).toBeNull();
+  });
+
+  it("descarga CSV autenticado y conserva el nombre del backend", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      expect(new Headers(init?.headers).get("authorization")).toBe("Bearer csv-token");
+      return new Response("\uFEFFFecha;Importe\r\n", { status: 200, headers: { "content-type": "text/csv", "content-disposition": 'attachment; filename="ventas.csv"' } });
+    }));
+    setAccessToken("csv-token");
+    const result = await apiDownload("/reports/sales/export?from=2026-08-01&to=2026-08-31");
+    expect(result.filename).toBe("ventas.csv");
+    expect(await result.blob.text()).toContain("Fecha;Importe");
   });
 });

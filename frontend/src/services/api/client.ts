@@ -55,6 +55,24 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}, retryA
   return parseResponse<T>(response);
 }
 
+export async function apiDownload(path: string, retryAuth = true): Promise<{ blob: Blob; filename: string }> {
+  const headers = new Headers();
+  if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
+  const response = await fetch(`${API_URL}${path}`, { headers, credentials: "include" });
+  if (response.status === 401 && retryAuth) {
+    try { await refreshSession(); return apiDownload(path, false); }
+    catch { setAccessToken(null); }
+  }
+  if (!response.ok) {
+    let message = "No se pudo exportar el reporte.";
+    try { const body = await response.json() as ApiErrorBody; message = body.message ?? message; } catch { /* CSV/error sin JSON */ }
+    throw new ApiClientError(message, response.status);
+  }
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  return { blob: await response.blob(), filename: match?.[1] ?? "reporte.csv" };
+}
+
 export async function loginRequest(identifier: string, password: string) {
   const data = await apiRequest<AuthPayload>("/auth/login", { method: "POST", body: JSON.stringify({ identifier, password }) }, false);
   setAccessToken(data.accessToken);

@@ -6,6 +6,7 @@ import { blockRouter, categoryRouter, employeeRouter, serviceRouter, settingsRou
 import { clientRouter } from "./client.routes.js";
 import { appointmentRouter } from "./appointment.routes.js";
 import { cashRouter, paymentMethodRouter } from "./cash.routes.js";
+import { analyticsRouter, auditRouter, reportRouter } from "./analytics.routes.js";
 
 export const apiRouter = Router();
 apiRouter.get("/health", health);
@@ -21,3 +22,6 @@ apiRouter.use("/clients", clientRouter);
 apiRouter.use("/appointments", appointmentRouter);
 apiRouter.use("/cash", cashRouter);
 apiRouter.use("/payment-methods", paymentMethodRouter);
+apiRouter.use("/analytics", analyticsRouter);
+apiRouter.use("/reports", reportRouter);
+apiRouter.use("/audit", auditRouter);

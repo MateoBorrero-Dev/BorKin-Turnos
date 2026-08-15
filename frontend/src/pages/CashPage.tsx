@@ -20,7 +20,7 @@ export function CashPage() {
   const history = useQuery({ queryKey: ["cash-history", historyPage, historyStatus, historyFrom, historyTo], queryFn: () => apiRequest<CashHistoryPage>(`/cash/history?${historyParams}`), staleTime: 0 });
   const detail = useQuery({ queryKey: ["cash-detail", detailId], queryFn: () => apiRequest<CashRegister>(`/cash/${detailId}`), enabled: Boolean(detailId), staleTime: 0 });
   const movements = useQuery({ queryKey: ["cash-movements", detailId, movementPage], queryFn: () => apiRequest<CashMovementPage>(`/cash/${detailId}/movements?page=${movementPage}&pageSize=10`), enabled: Boolean(detailId), staleTime: 0 });
-  const refresh = async () => { await Promise.all([queryClient.invalidateQueries({ queryKey: ["cash-current"] }), queryClient.invalidateQueries({ queryKey: ["cash-history"] }), queryClient.invalidateQueries({ queryKey: ["cash-detail"] })]); };
+  const refresh = async () => { await Promise.all([queryClient.invalidateQueries({ queryKey: ["cash-current"] }), queryClient.invalidateQueries({ queryKey: ["cash-history"] }), queryClient.invalidateQueries({ queryKey: ["cash-detail"] }), queryClient.invalidateQueries({ queryKey: ["analytics"] }), queryClient.invalidateQueries({ queryKey: ["reports"] }), queryClient.invalidateQueries({ queryKey: ["audit"] })]); };
   if (!user) return null;
   const money = (value: string) => formatMoney(value, user.business.currency, user.business.locale);
   const dateTime = (value: string) => new Intl.DateTimeFormat(user.business.locale, { timeZone: user.business.timezone, dateStyle: "medium", timeStyle: "short" }).format(new Date(value));

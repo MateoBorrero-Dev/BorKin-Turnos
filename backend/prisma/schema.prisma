@@ -212,6 +212,7 @@ model Client {
   @@index([businessId, lastName, firstName])
   @@index([businessId, phoneNormalized])
   @@index([businessId, emailNormalized])
+  @@index([businessId, createdAt])
 }
 
 model ServiceCategory {
@@ -403,6 +404,8 @@ model Payment {
   cashMovement    CashMovement?
   @@index([businessId, appointmentId, status])
   @@index([businessId, createdAt])
+  @@index([businessId, status, createdAt])
+  @@index([businessId, paymentMethodId, status, createdAt])
 }
 
 model CashRegister {
@@ -447,6 +450,7 @@ model CashMovement {
   payment         Payment?         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
   createdBy       User             @relation("CashMovementCreator", fields: [createdById], references: [id], onDelete: Restrict)
   @@index([businessId, occurredAt])
+  @@index([businessId, type, occurredAt])
   @@index([cashRegisterId, occurredAt])
 }
 
@@ -464,4 +468,5 @@ model AuditLog {
   user       User?    @relation(fields: [userId], references: [id], onDelete: Restrict)
   @@index([businessId, createdAt])
   @@index([businessId, action, createdAt])
+  @@index([businessId, userId, createdAt])
 }

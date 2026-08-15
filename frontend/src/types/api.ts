@@ -58,3 +58,28 @@ export type CashTotals = { paymentCount: number; totalPayments: string; totalSal
 export type CashRegister = { id: string; status: "ABIERTA" | "CERRADA"; openedAt: string; closedAt: string | null; openingAmount: string; openingNotes: string | null; expectedCash: string | null; countedCash: string | null; difference: string | null; closingNotes: string | null; openedBy: { id: string; firstName: string; lastName: string }; closedBy: { id: string; firstName: string; lastName: string } | null; totals: CashTotals; recentMovements: CashMovement[] };
 export type CashHistoryPage = { items: CashRegister[]; meta: PageMeta };
 export type CashMovementPage = { items: CashMovement[]; meta: PageMeta };
+export type DashboardData = {
+  date: string; timezone: string;
+  kpis: { total: number; pending: number; confirmed: number; inProgress: number; completed: number; cancelled: number; absent: number; clientsAttended: number };
+  financial?: { sales: string; paymentCount: number; averageTicket: string };
+  nextAppointment: null | { id: string; startAt: string; status: AppointmentStatus; serviceName: string; client: { firstName: string; lastName: string | null }; employee: { firstName: string; lastName: string } };
+  appointments: Array<{ id: string; startAt: string; endAt: string; status: AppointmentStatus; serviceName: string; client: { firstName: string; lastName: string | null }; employee: { firstName: string; lastName: string; color: string } }>;
+};
+export type AnalyticsOptions = { employees: Array<{ id: string; firstName: string; lastName: string }>; services: Array<{ id: string; name: string }>; paymentMethods: PaymentMethodOption[] };
+export type AnalyticsOverview = {
+  period: { from: string; to: string; timezone: string; previousFrom: string; previousTo: string };
+  current: { sales: string; paymentCount: number; averageTicket: string; appointmentCount: number; completedCount: number; clientCount: number; newClientCount: number; cancelledCount: number; absentCount: number; cancellationRate: string };
+  previous: { sales: string; appointmentCount: number; clientCount: number };
+  comparison: { sales: string | null; appointments: string | null; clients: string | null };
+};
+export type AnalyticsTimeseries = { timezone: string; points: Array<{ date: string; sales: string; appointments: number }> };
+export type RankItem = { id: string; name: string; sales: string; count: number };
+export type AnalyticsRankings = { services: RankItem[]; employees: RankItem[]; paymentMethods: Array<RankItem & { kind: PaymentMethodKind; percentage: string }> };
+export type ReportPage<T> = { items: T[]; meta: PageMeta; timezone: string };
+export type SalesReportRow = { id: string; createdAt: string; amount: string; originalPrice: string; clientName: string; employeeName: string; recordedByName: string; paymentMethod: PaymentMethodOption; appointment: { id: string; serviceName: string } };
+export type AppointmentReportRow = { id: string; startAt: string; status: AppointmentStatus; serviceName: string; price: string; paidAmount: string | null; clientName: string; employeeName: string };
+export type MovementReportRow = { id: string; occurredAt: string; type: CashMovementType; concept: string; amount: string; createdByName: string; paymentMethod: { name: string; kind: PaymentMethodKind } | null; cashRegister: { id: string; openedAt: string } };
+export type ClientReportRow = { id: string; clientName: string; phone: string | null; email: string | null; createdAt: string; active: boolean; appointmentCount: number; lastVisit: string | null };
+export type ServiceReportRow = { id: string; name: string; count: number; amount: string; average: string };
+export type AuditLogRow = { id: string; action: string; entity: string; entityId: string | null; metadata: unknown; ipAddress: string | null; createdAt: string; user: { id: string; firstName: string; lastName: string; username: string } | null };
+export type AuditOptions = { users: Array<{ id: string; firstName: string; lastName: string; username: string }>; actions: string[]; entities: string[] };

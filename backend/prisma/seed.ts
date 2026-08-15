@@ -15,7 +15,7 @@ const permissions = [
   "dashboard.view", "appointments.view", "appointments.create", "appointments.edit", "appointments.cancel",
   "clients.view", "clients.manage", "services.manage", "employees.manage", "cash.view", "cash.manage", "cash.open", "cash.close", "cash.movements",
   "payments.charge", "payments.adjust_amount",
-  "reports.view", "statistics.view", "settings.manage", "users.manage",
+  "reports.view", "statistics.view", "audit.view", "settings.manage", "users.manage",
 ] as const;
 
 async function main() {
