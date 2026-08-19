@@ -14,6 +14,8 @@ const schema = z.object({
   LOG_LEVEL: z.string().default("info"),
   UPLOAD_DIR: z.string().default("../.local/uploads"),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().max(10_000_000).default(2_000_000),
+}).superRefine((value, context) => {
+  if (value.NODE_ENV === "production" && !value.COOKIE_SECURE) context.addIssue({ code: "custom", path: ["COOKIE_SECURE"], message: "debe ser true en producción" });
 });
 
 const result = schema.safeParse(process.env);

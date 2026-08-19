@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Plus, UserRound, X } from "lucide-react";
+import { KeyRound, Plus, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Field, Modal } from "../components/Modal";
 import { apiRequest } from "../services/api/client";
 import type { RoleWithPermissions, UserRow } from "../types/api";
 
@@ -24,6 +25,7 @@ export function UsersPage() {
   const client = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<UserRow | null>(null);
+  const [statusTarget, setStatusTarget] = useState<UserRow | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const users = useQuery({ queryKey: ["users"], queryFn: () => apiRequest<UserRow[]>("/users") });
   const roles = useQuery({ queryKey: ["roles"], queryFn: () => apiRequest<RoleWithPermissions[]>("/access/roles") });
@@ -36,7 +38,7 @@ export function UsersPage() {
   });
   const statusMutation = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => apiRequest<UserRow>(`/users/${id}`, { method: "PATCH", body: JSON.stringify({ active }) }),
-    onSuccess: (_data, variables) => { toast.success(variables.active ? "Usuario activado." : "Usuario desactivado."); void client.invalidateQueries({ queryKey: ["users"] }); },
+    onSuccess: (_data, variables) => { toast.success(variables.active ? "Usuario activado." : "Usuario desactivado."); setStatusTarget(null); void client.invalidateQueries({ queryKey: ["users"] }); },
     onError: (error) => toast.error(message(error)),
   });
   const resetMutation = useMutation({
@@ -59,7 +61,7 @@ export function UsersPage() {
           : <div className="divide-y divide-slate-100">{users.data.map((user) => (
             <article key={user.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">{user.firstName[0]}{user.lastName[0]}</span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate font-medium">{user.firstName} {user.lastName}</p><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${user.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{user.active ? "Activo" : "Inactivo"}</span></div><p className="truncate text-sm text-slate-500">@{user.username} · {user.email}</p><p className="mt-1 text-xs text-slate-400">{user.role.name}</p></div></div>
-              <div className="flex flex-wrap gap-2 sm:justify-end"><button className="secondary-button" onClick={() => setResetTarget(user)}><KeyRound size={16} />Contraseña</button><button className="secondary-button" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: user.id, active: !user.active })}>{user.active ? "Desactivar" : "Activar"}</button></div>
+              <div className="flex flex-wrap gap-2 sm:justify-end"><button className="secondary-button" onClick={() => setResetTarget(user)}><KeyRound size={16} />Contraseña</button><button className="secondary-button" disabled={statusMutation.isPending} onClick={() => setStatusTarget(user)}>{user.active ? "Desactivar" : "Activar"}</button></div>
             </article>
           ))}</div>}
       </section>
@@ -85,14 +87,13 @@ export function UsersPage() {
           <div className="mt-6 flex justify-end gap-3"><button className="secondary-button" onClick={() => setResetTarget(null)}>Cancelar</button><button className="primary-button" disabled={newPassword.length < 12 || resetMutation.isPending} onClick={() => resetMutation.mutate({ id: resetTarget.id, password: newPassword })}>{resetMutation.isPending ? "Guardando…" : "Restablecer"}</button></div>
         </Modal>
       )}
+
+      {statusTarget && (
+        <Modal title={`¿${statusTarget.active ? "Desactivar" : "Activar"} usuario?`} onClose={() => setStatusTarget(null)}>
+          <p className="text-sm leading-6 text-slate-600">{statusTarget.active ? "El usuario perderá el acceso y sus sesiones dejarán de renovarse. Su historial se conservará." : "El usuario recuperará el acceso según su rol y permisos actuales."}</p>
+          <div className="mt-6 flex justify-end gap-3"><button className="secondary-button" onClick={() => setStatusTarget(null)}>Cancelar</button><button className={statusTarget.active ? "danger-button" : "primary-button"} disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: statusTarget.id, active: !statusTarget.active })}>{statusMutation.isPending ? "Guardando…" : "Confirmar"}</button></div>
+        </Modal>
+      )}
     </div>
   );
-}
-
-function Field({ label, error, children }: { label: string; error: string | undefined; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-2 block text-sm font-medium">{label}</span>{children}{error && <span className="field-error">{error}</span>}</label>;
-}
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4"><section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label={title}><header className="mb-6 flex items-center justify-between"><h2 className="text-xl font-semibold">{title}</h2><button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Cerrar"><X size={20} /></button></header>{children}</section></div>;
 }

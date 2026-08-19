@@ -7,7 +7,7 @@ export type AuthUser = {
 export type AuthPayload = { accessToken: string; user: AuthUser };
 export type PageMeta = { page: number; pageSize: number; total: number; totalPages: number };
 export type ApiEnvelope<T> = { success: true; data: T; meta?: PageMeta };
-export type ApiErrorBody = { success: false; message: string; code?: string; details?: unknown };
+export type ApiErrorBody = { success: false; message: string; code?: string; details?: unknown; requestId?: string };
 export type UserRow = {
   id: string; username: string; email: string; firstName: string; lastName: string; active: boolean; lastLoginAt: string | null;
   role: RoleSummary; permissions: Array<{ effect: "ALLOW" | "DENY"; permission: { id: string; code: string; name: string } }>;

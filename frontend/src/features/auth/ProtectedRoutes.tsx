@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { ForbiddenPage } from "../../components/RouteFeedback";
 import { LoadingScreen } from "../../components/LoadingScreen";
 import { useAuth } from "../../hooks/useAuth";
 import { hasPermission } from "../../utils/permissions";
@@ -13,6 +14,6 @@ export function ProtectedRoute() {
 
 export function PermissionRoute({ permission }: { permission: string }) {
   const { user } = useAuth();
-  if (!user || !hasPermission(user.permissions, permission)) return <Navigate to="/" replace />;
+  if (!user || !hasPermission(user.permissions, permission)) return <ForbiddenPage />;
   return <Outlet />;
 }

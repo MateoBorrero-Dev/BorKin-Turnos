@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { health } from "../controllers/health.controller.js";
+import { health, ready } from "../controllers/health.controller.js";
 import { accessRouter, userRouter } from "./user.routes.js";
 import { authRouter } from "./auth.routes.js";
 import { blockRouter, categoryRouter, employeeRouter, serviceRouter, settingsRouter } from "./phase2.routes.js";
@@ -10,6 +10,7 @@ import { analyticsRouter, auditRouter, reportRouter } from "./analytics.routes.j
 
 export const apiRouter = Router();
 apiRouter.get("/health", health);
+apiRouter.get("/health/ready", ready);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/users", userRouter);
 apiRouter.use("/access", accessRouter);

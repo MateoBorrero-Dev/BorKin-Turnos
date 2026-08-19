@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="BorKin Turnos">
+  <rect width="512" height="512" rx="112" fill="#2563eb"/>
+  <rect x="104" y="126" width="304" height="278" rx="46" fill="#ffffff"/>
+  <path d="M104 206h304" stroke="#2563eb" stroke-width="34"/>
+  <path d="M179 96v78M333 96v78" stroke="#ffffff" stroke-width="28" stroke-linecap="round"/>
+  <path d="M198 269h71c45 0 67 19 67 51 0 38-27 57-77 57h-61zm42 32v44h22c21 0 31-7 31-22s-10-22-31-22z" fill="#2563eb"/>
+</svg>

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiDownload, apiRequest, assetUrl, setAccessToken } from "./client";
+import { apiDownload, apiRequest, assetUrl, setAccessToken, subscribeSessionExpired } from "./client";
 
 afterEach(() => { vi.unstubAllGlobals(); setAccessToken(null); });
 
@@ -40,5 +40,39 @@ describe("cliente HTTP", () => {
     const result = await apiDownload("/reports/sales/export?from=2026-08-01&to=2026-08-31");
     expect(result.filename).toBe("ventas.csv");
     expect(await result.blob.text()).toContain("Fecha;Importe");
+  });
+
+  it("comparte un único refresh entre solicitudes 401 concurrentes y reintenta una vez", async () => {
+    let privateCalls = 0;
+    let refreshCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        refreshCalls += 1;
+        await Promise.resolve();
+        return new Response(JSON.stringify({ success: true, data: { accessToken: "renewed", user: {} } }), { status: 200 });
+      }
+      privateCalls += 1;
+      if (privateCalls <= 2) return new Response(JSON.stringify({ success: false, message: "Sesión vencida", code: "AUTH_REQUIRED" }), { status: 401 });
+      return new Response(JSON.stringify({ success: true, data: { ok: true } }), { status: 200 });
+    }));
+
+    await expect(Promise.all([apiRequest("/private"), apiRequest("/private")])).resolves.toEqual([{ ok: true }, { ok: true }]);
+    expect(refreshCalls).toBe(1);
+    expect(privateCalls).toBe(4);
+  });
+
+  it("notifica una sola vez cuando el refresh expiró", async () => {
+    const expired = vi.fn();
+    const unsubscribe = subscribeSessionExpired(expired);
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify({ success: false, message: "Sesión vencida", code: "AUTH_REQUIRED" }), { status: String(input).endsWith("/auth/refresh") ? 401 : 401 })));
+    await expect(apiRequest("/private")).rejects.toMatchObject({ status: 401 });
+    expect(expired).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it("convierte fallos de red en un error seguro y accionable", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("failed to fetch private details"); }));
+    await expect(apiRequest("/private", {}, false)).rejects.toMatchObject({ status: 0, code: "NETWORK_ERROR", message: expect.stringContaining("conectar") });
   });
 });

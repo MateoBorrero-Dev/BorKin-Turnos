@@ -56,6 +56,13 @@ export async function refresh(rawToken: string | undefined, metadata: RequestMet
   const expiresAt = new Date(Date.now() + env.JWT_REFRESH_TTL_DAYS * 86_400_000);
 
   const result = await prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id"
+      FROM "RefreshSession"
+      WHERE "tokenHash" = ${tokenHash}
+      FOR UPDATE
+    `;
+    if (!locked.length) return { kind: "invalid" } as const;
     const current = await tx.refreshSession.findUnique({ where: { tokenHash }, include: { user: true } });
     if (!current) return { kind: "invalid" } as const;
     if (current.revokedAt) {

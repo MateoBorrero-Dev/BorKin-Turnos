@@ -14,6 +14,8 @@
     "dev": "concurrently --kill-others-on-fail --names backend,frontend --prefix-colors blue,magenta \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm run dev --workspace backend",
     "dev:frontend": "npm run dev --workspace frontend",
+    "start:backend": "npm run start --workspace backend",
+    "preview:frontend": "npm run preview --workspace frontend",
     "dev:all": "node scripts/local-postgres.mjs ensure && npm run dev",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
@@ -34,7 +36,7 @@
     "prisma@7.9.1": true
   },
   "devDependencies": {
-    "concurrently": "9.2.1",
+    "concurrently": "9.2.4",
     "typescript": "6.0.3"
   }
 }

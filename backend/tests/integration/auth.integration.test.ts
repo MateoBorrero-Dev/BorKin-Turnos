@@ -3,6 +3,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.js";
 import { prisma } from "../../src/config/prisma.js";
+import { hashRefreshToken } from "../../src/utils/tokens.js";
 
 const adminPassword = "Admin-Test-Password-2026";
 const employeePassword = "Employee-Test-Password-2026";
@@ -111,6 +112,27 @@ describe("autenticación, sesiones y autorización", () => {
     expect(reused.body.code).toBe("REFRESH_REUSE_DETECTED");
     const familyRevoked = await request(app).post("/api/auth/refresh").set("Origin", "http://localhost:5173").set("Cookie", newCookie);
     expect(familyRevoked.status).toBe(401);
+  });
+
+  it("serializa dos refresh simultáneos del mismo token y revoca la familia reutilizada", async () => {
+    const login = await request(app).post("/api/auth/login").send({ identifier: "admin", password: adminPassword });
+    const initialCookie = (login.headers["set-cookie"] as unknown as string[])[0]!.split(";")[0]!;
+    const rawToken = initialCookie.slice(initialCookie.indexOf("=") + 1);
+    const original = await prisma.refreshSession.findUniqueOrThrow({ where: { tokenHash: hashRefreshToken(rawToken) } });
+
+    const responses = await Promise.all([
+      request(app).post("/api/auth/refresh").set("Origin", "http://localhost:5173").set("Cookie", initialCookie),
+      request(app).post("/api/auth/refresh").set("Origin", "http://localhost:5173").set("Cookie", initialCookie),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 401]);
+    expect(responses.filter((response) => response.status === 200)).toHaveLength(1);
+    expect(responses.find((response) => response.status === 401)?.body.code).toBe("REFRESH_REUSE_DETECTED");
+
+    const family = await prisma.refreshSession.findMany({ where: { familyId: original.familyId }, orderBy: { createdAt: "asc" } });
+    expect(family).toHaveLength(2);
+    expect(family.filter((session) => session.id !== original.id)).toHaveLength(1);
+    expect(family.filter((session) => session.revokedAt === null)).toHaveLength(0);
   });
 
   it("cierra sesión e invalida el refresh token", async () => {

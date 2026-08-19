@@ -1,6 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
 import { ZodError } from "zod";
-import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
 import { ApiError } from "../utils/api-error.js";
 import multer from "multer";
@@ -25,6 +24,18 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, req, res, _nex
     res.status(409).json({ success: false, message: "Ya existe un registro con esos datos.", code: "CONFLICT" });
     return;
   }
+  if (isServiceUnavailable(error)) {
+    logger.error({ err: error, requestId: req.id }, "Database unavailable");
+    res.status(503).json({ success: false, message: "El servicio no está disponible en este momento.", code: "SERVICE_UNAVAILABLE", requestId: String(req.id) });
+    return;
+  }
   logger.error({ err: error, requestId: req.id }, "Unhandled request error");
-  res.status(500).json({ success: false, message: "Ocurrió un error inesperado.", ...(env.NODE_ENV === "development" ? { code: "INTERNAL_ERROR" } : {}) });
+  res.status(500).json({ success: false, message: "Ocurrió un error inesperado. Intentá nuevamente.", code: "INTERNAL_ERROR", requestId: String(req.id) });
 };
+
+function isServiceUnavailable(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String(error.code) : "";
+  const message = error instanceof Error ? error.message : "";
+  return ["P1001", "P1002", "P2024", "ECONNREFUSED", "57P01", "57P02", "57P03"].includes(code) || /Can't reach database server|connection (?:refused|terminated)/i.test(message);
+}

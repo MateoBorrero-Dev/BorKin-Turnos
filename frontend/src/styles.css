@@ -6,20 +6,27 @@
 
 @layer base {
   * { box-sizing: border-box; }
-  body { margin: 0; min-width: 320px; background: #f8fafc; font-family: var(--font-sans); }
-  button, input, select { font: inherit; }
-  button { cursor: pointer; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; min-width: 320px; overflow-x: hidden; background: #f8fafc; color: #0f172a; font-family: var(--font-sans); }
+  button, input, select, textarea { font: inherit; }
+  button { min-height: 44px; cursor: pointer; }
   button:disabled { cursor: not-allowed; opacity: .55; }
+  :focus-visible { outline: 3px solid var(--brand-primary, #2563eb); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  }
 }
 
 @layer components {
   .field { @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400; }
   .field:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 4px var(--brand-soft); }
   .field-error { @apply mt-1.5 block text-xs text-red-600; }
-  .primary-button { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition focus:outline-none; background: var(--brand-primary, #2563eb); }
+  .primary-button { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none; color: var(--brand-contrast, #fff); background: var(--brand-primary, #2563eb); }
   .primary-button:hover { filter: brightness(.9); }
   .primary-button:focus { box-shadow: 0 0 0 4px var(--brand-soft); }
-  .secondary-button { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200; }
+  .secondary-button { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200; }
+  .danger-button { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-200; }
   .brand-text { color: var(--brand-primary, #2563eb); }
   .brand-bg { background: var(--brand-primary, #2563eb); }
   .nav-active { color: var(--brand-primary, #2563eb); background: var(--brand-soft, #dbeafe); }

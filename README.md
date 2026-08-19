@@ -6,7 +6,7 @@ Proyecto perteneciente a BorKin.
 
 ## Estado
 
-La Fase 2 agrega a las fundaciones autenticadas la configuración del negocio, identidad visual, categorías, servicios, profesionales, asignaciones, horarios laborales y bloqueos de agenda. Todos los datos operativos se aíslan por el negocio de la sesión.
+Las Fases 1 a 6 implementan autenticación, negocio, catálogo, profesionales, clientes, agenda, caja, dashboard, estadísticas y reportes. La Fase 7 consolida el producto con navegación responsive, accesibilidad base, manejo global de errores, PWA segura, healthchecks y hardening de sesiones. Todos los datos operativos se aíslan por el negocio de la sesión.
 
 ## Requisitos
 
@@ -30,6 +30,8 @@ Frontend: `http://localhost:5173`. API: `http://localhost:3000/api`.
 - `npm run dev:all`: garantiza que PostgreSQL local esté activa y luego inicia backend y frontend.
 - `npm run dev:backend`: inicia sólo la API.
 - `npm run dev:frontend`: inicia sólo Vite.
+- `npm run start:backend`: inicia el build compilado de la API.
+- `npm run preview:frontend`: sirve localmente el build frontend ya generado para verificación.
 - `npm run db:start`: inicia únicamente el cluster PostgreSQL de `.local/postgres-data`.
 - `npm run db:stop`: detiene ese cluster sin eliminar datos.
 - `npm run db:status`: informa si el cluster está activo, detenido o inaccesible.
@@ -55,3 +57,30 @@ En V1, logos y fotos se almacenan bajo `.local/uploads` y se sirven desde `/uplo
 Los archivos `.env`, tokens, hashes y credenciales no deben incorporarse a Git.
 
 Las políticas de sesiones y de integridad histórica están en `docs/`.
+
+## Variables de entorno
+
+Copiar `.env.example` a `backend/.env` para desarrollo. Las variables principales son:
+
+- `DATABASE_URL`: conexión PostgreSQL de la aplicación.
+- `TEST_DATABASE_URL`: base aislada utilizada por la suite de integración.
+- `FRONTEND_URL`: único origen autorizado por CORS y por endpoints basados en cookie.
+- `JWT_SECRET` y `JWT_REFRESH_SECRET`: secretos distintos, aleatorios y de al menos 32 caracteres.
+- `JWT_ACCESS_TTL` y `JWT_REFRESH_TTL_DAYS`: duración de access y refresh.
+- `COOKIE_SECURE`: debe ser `true` en producción; el backend rechaza una configuración productiva insegura.
+- `UPLOAD_DIR` y `MAX_UPLOAD_BYTES`: almacenamiento local y límite de imágenes.
+- `VITE_API_URL`: URL pública de la API utilizada al compilar el frontend.
+- `ADMIN_*` y `BUSINESS_NAME`: datos del seed inicial; usar valores propios y nunca versionar credenciales reales.
+
+## Build y ejecución de producción
+
+1. Instalar exactamente el lockfile con `npm ci` usando Node.js 24 LTS.
+2. Definir variables productivas y secretos fuera del repositorio. Usar HTTPS y `COOKIE_SECURE=true`.
+3. Ejecutar `npm run db:deploy` y, sólo para la instalación inicial, `npm run db:seed`.
+4. Ejecutar `npm run build`.
+5. Iniciar la API con `npm run start:backend`.
+6. Servir `frontend/dist` desde un servidor HTTPS con fallback de rutas SPA a `index.html`. `npm run preview:frontend` sirve únicamente para verificación local del build.
+
+El proxy o balanceador debe enviar `/api`, `/uploads` y `/health` al backend. No debe aplicar caché pública a la API, uploads privados, `index.html`, `sw.js` ni `manifest.webmanifest`; los assets con hash de `frontend/dist/assets` sí pueden usar caché prolongada. Los healthchecks son `GET /health` (vida del proceso, sin dependencia de base) y `GET /health/ready` (disponibilidad con PostgreSQL).
+
+La PWA requiere HTTPS fuera de localhost. Su service worker precachea únicamente el shell y assets estáticos; API, uploads y health usan red exclusivamente y no existe sincronización financiera offline. La política completa y el checklist de despliegue están en `docs/phase7-product-hardening.md`.
