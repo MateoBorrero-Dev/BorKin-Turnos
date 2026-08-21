@@ -24,5 +24,11 @@ export function appointmentError(error: unknown) { if (error instanceof ApiClien
 export function clearAfterServiceChange() { return { employeeId: "", time: "" }; }
 export function clearAfterEmployeeOrDateChange() { return { time: "" }; }
 export function availabilityTimes(value: Availability | undefined) { return value?.slots.map((slot) => slot.time) ?? []; }
+export function selectableAvailabilitySlots(value: Availability | undefined, date: string, timeZone: string, now: Date = new Date()) {
+  const slots = value?.slots ?? [];
+  if (date !== todayKeyInZone(timeZone, now)) return slots;
+  const current = now.getTime();
+  return slots.filter((slot) => { const start = Date.parse(slot.startAt); return Number.isFinite(start) && start >= current; });
+}
 export function agendaPath(from: string, to: string, employeeId = "") { return `/appointments?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${employeeId ? `&employeeId=${encodeURIComponent(employeeId)}` : ""}`; }
 export function clientOptionsPath(search: string, limit = 8) { return `/clients/options?search=${encodeURIComponent(search.trim())}&limit=${limit}`; }

@@ -15,6 +15,9 @@ const includeAppointment = {
 type Tx = Prisma.TransactionClient;
 type CreateInput = { clientId: string; serviceId: string; employeeId: string; date: string; time: string; notes?: string | null };
 type UpdateInput = Partial<CreateInput>;
+type UpdateOptions = { reschedule?: boolean };
+
+const APPOINTMENT_IN_PAST_MESSAGE = "No se pueden crear turnos en una fecha u horario pasado.";
 
 function localDateTime(date: string, time: string, zone: string) {
   const value = DateTime.fromISO(`${date}T${time}`, { zone, setZone: true });
@@ -25,6 +28,16 @@ function localDateTime(date: string, time: string, zone: string) {
 function localParts(value: Date, zone: string) {
   const dateTime = DateTime.fromJSDate(value, { zone });
   return { date: dateTime.toFormat("yyyy-MM-dd"), time: dateTime.toFormat("HH:mm") };
+}
+
+function businessNow(zone: string) {
+  const value = DateTime.now().setZone(zone);
+  if (!value.isValid) throw new ApiError(400, "La zona horaria del negocio no es válida.", "INVALID_BUSINESS_TIMEZONE");
+  return value;
+}
+
+function assertNotInPast(start: DateTime, zone: string) {
+  if (start.toMillis() < businessNow(zone).toMillis()) throw new ApiError(400, APPOINTMENT_IN_PAST_MESSAGE, "APPOINTMENT_IN_PAST");
 }
 
 async function businessZone(tx: Tx, businessId: string) {
@@ -112,6 +125,9 @@ export async function availability(businessId: string, serviceId: string, employ
     if (!assignment) throw new ApiError(400, "El profesional no realiza el servicio seleccionado.", "EMPLOYEE_SERVICE_MISMATCH");
     const day = DateTime.fromISO(date, { zone }).startOf("day");
     if (!day.isValid || day.toFormat("yyyy-MM-dd") !== date) throw new ApiError(400, "Ingresá una fecha válida.", "INVALID_DATE");
+    const now = businessNow(zone);
+    const base = { date, timezone: zone, durationMinutes: service.durationMinutes, slotMinutes: 15 };
+    if (day < now.startOf("day")) return { ...base, slots: [] };
     const schedules = await tx.employeeSchedule.findMany({ where: { employeeId, dayOfWeek: day.weekday % 7 }, orderBy: { startMinute: "asc" } });
     const dayEnd = day.plus({ days: 1 });
     const appointments = await tx.appointment.findMany({ where: { businessId, employeeId, status: { in: OCCUPYING }, startAt: { lt: dayEnd.toJSDate() }, endAt: { gt: day.toJSDate() } }, select: { startAt: true, endAt: true } });
@@ -121,9 +137,9 @@ export async function availability(businessId: string, serviceId: string, employ
     for (const schedule of schedules) for (let minute = schedule.startMinute; minute + service.durationMinutes <= schedule.endMinute; minute += 15) {
       const clock = `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
       const start = localDateTime(date, clock, zone); const end = start.plus({ minutes: service.durationMinutes });
-      if (!busy.some((item) => item.startAt < end.toJSDate() && item.endAt > start.toJSDate())) slots.push({ date, time: clock, startAt: start.toUTC().toISO()!, endAt: end.toUTC().toISO()!, durationMinutes: service.durationMinutes });
+      if (start >= now && !busy.some((item) => item.startAt < end.toJSDate() && item.endAt > start.toJSDate())) slots.push({ date, time: clock, startAt: start.toUTC().toISO()!, endAt: end.toUTC().toISO()!, durationMinutes: service.durationMinutes });
     }
-    return { date, timezone: zone, durationMinutes: service.durationMinutes, slotMinutes: 15, slots };
+    return { ...base, slots };
   });
 }
 
@@ -134,6 +150,7 @@ export async function createAppointment(businessId: string, userId: string, inpu
       const zone = await businessZone(tx, businessId);
       const { service } = await relations(tx, businessId, input);
       const start = localDateTime(input.date, input.time, zone); const end = start.plus({ minutes: service.durationMinutes });
+      assertNotInPast(start, zone);
       await validateRange(tx, businessId, input.employeeId, start.toJSDate(), end.toJSDate(), zone);
       const created = await tx.appointment.create({ data: { businessId, createdById: userId, clientId: input.clientId, serviceId: input.serviceId, employeeId: input.employeeId, startAt: start.toUTC().toJSDate(), endAt: end.toUTC().toJSDate(), durationMinutes: service.durationMinutes, serviceName: service.name, price: service.price, notes: input.notes ?? null } });
       await tx.appointmentStatusEvent.create({ data: { businessId, appointmentId: created.id, userId, toStatus: "PENDIENTE", reason: "Turno creado" } });
@@ -151,7 +168,7 @@ async function currentEditable(tx: Tx, businessId: string, id: string) {
   return item;
 }
 
-export async function updateAppointment(businessId: string, userId: string, id: string, input: UpdateInput) {
+export async function updateAppointment(businessId: string, userId: string, id: string, input: UpdateInput, options: UpdateOptions = {}) {
   try {
     await prisma.$transaction(async (tx) => {
       const current = await currentEditable(tx, businessId, id);
@@ -169,6 +186,8 @@ export async function updateAppointment(businessId: string, userId: string, id: 
       const serviceChanged = merged.serviceId !== current.serviceId;
       const durationMinutes = serviceChanged ? service.durationMinutes : current.durationMinutes;
       const start = localDateTime(merged.date, merged.time, zone); const end = start.plus({ minutes: durationMinutes });
+      const scheduleChanged = start.toUTC().toMillis() !== current.startAt.getTime() || merged.employeeId !== current.employeeId;
+      if (options.reschedule || scheduleChanged) assertNotInPast(start, zone);
       if (structural) await validateRange(tx, businessId, merged.employeeId, start.toJSDate(), end.toJSDate(), zone, id);
       const updated = await tx.appointment.update({ where: { id }, data: { clientId: merged.clientId, serviceId: merged.serviceId, employeeId: merged.employeeId, startAt: start.toUTC().toJSDate(), endAt: end.toUTC().toJSDate(), durationMinutes, ...(serviceChanged ? { serviceName: service.name, price: service.price } : {}), notes: merged.notes ?? null, version: { increment: 1 } } });
       const rescheduled = current.startAt.getTime() !== updated.startAt.getTime() || current.employeeId !== updated.employeeId;

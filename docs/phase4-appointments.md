@@ -14,6 +14,8 @@ Las fechas y horas ingresadas se interpretan exclusivamente en la zona IANA de `
 
 La disponibilidad avanza cada 15 minutos. La duración real proviene del servicio y puede no ser múltiplo de 15. Un candidato se devuelve sólo si cabe entero dentro de un único `EmployeeSchedule`, no intersecta un `ScheduleBlock` global o profesional y no intersecta un turno ocupante. Todas las intersecciones son semiabiertas: `start < otherEnd && end > otherStart`.
 
+No se permite crear ni reprogramar un turno con `startAt` anterior al instante actual. El backend interpreta el día y la hora con `Business.timezone` y responde HTTP 400 con `APPOINTMENT_IN_PAST`; no depende de la zona del navegador. Para consultas de disponibilidad, una fecha local anterior a hoy devuelve una lista vacía y la fecha de hoy omite todo slot cuyo inicio ya pasó. Esta regla no altera ni oculta turnos históricos y tampoco interviene en sus acciones de estado válidas.
+
 ## Estados e historial sensible
 
 Transiciones permitidas:
