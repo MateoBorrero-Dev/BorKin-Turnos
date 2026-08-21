@@ -1,6 +1,10 @@
 import type { ApiEnvelope, ApiErrorBody, AuthPayload } from "../../types/api";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
+export function resolveApiUrl(configured: string | undefined, fallback: string) {
+  return configured ?? fallback;
+}
+
+const API_URL = resolveApiUrl(import.meta.env.VITE_API_URL, import.meta.env.DEV ? "http://localhost:3000/api" : "/api");
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
 let accessToken: string | null = null;
 let activeRefresh: Promise<AuthPayload> | null = null;

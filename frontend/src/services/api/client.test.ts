@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiDownload, apiRequest, assetUrl, setAccessToken, subscribeSessionExpired } from "./client";
+import { apiDownload, apiRequest, assetUrl, resolveApiUrl, setAccessToken, subscribeSessionExpired } from "./client";
 
 afterEach(() => { vi.unstubAllGlobals(); setAccessToken(null); });
 
@@ -29,6 +29,12 @@ describe("cliente HTTP", () => {
   it("resuelve /uploads contra el origen configurado de la API", () => {
     expect(assetUrl("/uploads/business/logo.png")).toBe("http://localhost:3000/uploads/business/logo.png");
     expect(assetUrl(null)).toBeNull();
+  });
+
+  it("respeta el fallback same-origin y una URL configurada", () => {
+    expect(resolveApiUrl(undefined, "/api")).toBe("/api");
+    expect(resolveApiUrl(undefined, "http://localhost:3000/api")).toBe("http://localhost:3000/api");
+    expect(resolveApiUrl("https://api.example.com/api", "/api")).toBe("https://api.example.com/api");
   });
 
   it("descarga CSV autenticado y conserva el nombre del backend", async () => {

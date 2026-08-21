@@ -4,6 +4,7 @@ build/
 .env
 .env.*
 !.env.example
+!.env.production.example
 coverage/
 .vscode/
 .DS_Store
@@ -12,3 +13,6 @@ coverage/
 backend/src/generated/
 frontend/.vite/
 *.tsbuildinfo
+backups/
+data/
+*.partial

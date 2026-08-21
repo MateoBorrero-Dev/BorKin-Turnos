@@ -6,7 +6,7 @@ Proyecto perteneciente a BorKin.
 
 ## Estado
 
-Las Fases 1 a 6 implementan autenticación, negocio, catálogo, profesionales, clientes, agenda, caja, dashboard, estadísticas y reportes. La Fase 7 consolida el producto con navegación responsive, accesibilidad base, manejo global de errores, PWA segura, healthchecks y hardening de sesiones. Todos los datos operativos se aíslan por el negocio de la sesión.
+La versión pre-lanzamiento `0.1.0` incluye autenticación, negocio, catálogo, profesionales, clientes, agenda, caja, dashboard, estadísticas, reportes, experiencia responsive, PWA online-first y controles de seguridad. La Fase 8 agrega una entrega reproducible con Docker Compose, persistencia, migraciones explícitas, seeds separados, backup/restore y documentación operativa. Todos los datos operativos se aíslan por el negocio de la sesión.
 
 ## Requisitos
 
@@ -41,6 +41,9 @@ Frontend: `http://localhost:5173`. API: `http://localhost:3000/api`.
 - `npm run build`: genera builds productivos.
 - `npm run db:deploy`: aplica migraciones existentes.
 - `npm run db:seed`: crea negocio, roles, permisos y administrador iniciales.
+- `npm run db:seed:demo`: agrega datos demostrativos sólo en desarrollo; se bloquea en producción.
+- `npm run backup:docker`: crea dump, copia uploads y genera manifiesto verificado.
+- `npm run restore:docker -- --force --source <carpeta>`: restaura explícitamente un paquete validado con backend detenido.
 
 ## Puertos de desarrollo
 
@@ -65,6 +68,7 @@ Copiar `.env.example` a `backend/.env` para desarrollo. Las variables principale
 - `DATABASE_URL`: conexión PostgreSQL de la aplicación.
 - `TEST_DATABASE_URL`: base aislada utilizada por la suite de integración.
 - `FRONTEND_URL`: único origen autorizado por CORS y por endpoints basados en cookie.
+- `TRUST_PROXY_HOPS`: cantidad exacta de proxies confiables delante de Express. En producción Docker estándar debe ser `2`; en desarrollo directo es `0`.
 - `JWT_SECRET` y `JWT_REFRESH_SECRET`: secretos distintos, aleatorios y de al menos 32 caracteres.
 - `JWT_ACCESS_TTL` y `JWT_REFRESH_TTL_DAYS`: duración de access y refresh.
 - `COOKIE_SECURE`: debe ser `true` en producción; el backend rechaza una configuración productiva insegura.
@@ -72,15 +76,23 @@ Copiar `.env.example` a `backend/.env` para desarrollo. Las variables principale
 - `VITE_API_URL`: URL pública de la API utilizada al compilar el frontend.
 - `ADMIN_*` y `BUSINESS_NAME`: datos del seed inicial; usar valores propios y nunca versionar credenciales reales.
 
-## Build y ejecución de producción
+## Despliegue recomendado con Docker
 
-1. Instalar exactamente el lockfile con `npm ci` usando Node.js 24 LTS.
-2. Definir variables productivas y secretos fuera del repositorio. Usar HTTPS y `COOKIE_SECURE=true`.
-3. Ejecutar `npm run db:deploy` y, sólo para la instalación inicial, `npm run db:seed`.
-4. Ejecutar `npm run build`.
-5. Iniciar la API con `npm run start:backend`.
-6. Servir `frontend/dist` desde un servidor HTTPS con fallback de rutas SPA a `index.html`. `npm run preview:frontend` sirve únicamente para verificación local del build.
+1. Copiar `.env.production.example` como `.env.production` y reemplazar todos los valores de ejemplo.
+2. Validar con `docker compose --env-file .env.production config --quiet`.
+3. Iniciar PostgreSQL, ejecutar migraciones y seed base explícitamente y luego levantar backend/frontend siguiendo [deployment.md](docs/deployment.md).
+4. Terminar HTTPS en un proxy externo. La cadena soportada es cliente → proxy TLS externo → Nginx BorKin → Express, con `TRUST_PROXY_HOPS=2`. Nginx es el único contenedor publicado y mantiene `/api` y `/uploads` en el mismo origen.
 
-El proxy o balanceador debe enviar `/api`, `/uploads` y `/health` al backend. No debe aplicar caché pública a la API, uploads privados, `index.html`, `sw.js` ni `manifest.webmanifest`; los assets con hash de `frontend/dist/assets` sí pueden usar caché prolongada. Los healthchecks son `GET /health` (vida del proceso, sin dependencia de base) y `GET /health/ready` (disponibilidad con PostgreSQL).
+No ejecutar `docker compose down -v` en una actualización: elimina los volúmenes persistentes. Crear un backup completo antes de cada cambio.
 
-La PWA requiere HTTPS fuera de localhost. Su service worker precachea únicamente el shell y assets estáticos; API, uploads y health usan red exclusivamente y no existe sincronización financiera offline. La política completa y el checklist de despliegue están en `docs/phase7-product-hardening.md`.
+La PWA requiere HTTPS fuera de localhost. Su service worker precachea únicamente el shell y assets estáticos; API, uploads y health usan red exclusivamente y no existe sincronización financiera offline.
+
+## Documentación
+
+- [Despliegue productivo](docs/deployment.md)
+- [Operación y mantenimiento](docs/operations.md)
+- [Backup, restore y recuperación](docs/backup-restore.md)
+- [Guía rápida de usuario](docs/user-guide.md)
+- [Checklist de entrega comercial](docs/client-delivery-checklist.md)
+- [Hardening de producto y PWA](docs/phase7-product-hardening.md)
+- [Changelog](CHANGELOG.md)

@@ -34,6 +34,14 @@ describe("Fase 7 — disponibilidad, errores y headers", () => {
     expect(JSON.stringify(response.body)).not.toContain("private-host");
   });
 
+  it("trata una base temporalmente cerrada por mantenimiento como no disponible", async () => {
+    vi.spyOn(prisma, "$queryRaw").mockRejectedValueOnce(Object.assign(new Error('database "qa" is not currently accepting connections'), { code: "P2010" }));
+    const response = await request(app).get("/health/ready");
+    expect(response.status).toBe(503);
+    expect(response.body).toMatchObject({ success: false, code: "SERVICE_UNAVAILABLE" });
+    expect(JSON.stringify(response.body)).not.toContain("qa");
+  });
+
   it("mantiene Helmet, limita CORS al frontend y no envía HSTS en test HTTP", async () => {
     const allowed = await request(app).get("/health").set("Origin", "http://localhost:5173");
     expect(allowed.headers["access-control-allow-origin"]).toBe("http://localhost:5173");

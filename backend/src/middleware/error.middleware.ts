@@ -37,5 +37,6 @@ function isServiceUnavailable(error: unknown) {
   if (!error || typeof error !== "object") return false;
   const code = "code" in error ? String(error.code) : "";
   const message = error instanceof Error ? error.message : "";
-  return ["P1001", "P1002", "P2024", "ECONNREFUSED", "57P01", "57P02", "57P03"].includes(code) || /Can't reach database server|connection (?:refused|terminated)/i.test(message);
+  return ["P1001", "P1002", "P2024", "ECONNREFUSED", "57P01", "57P02", "57P03"].includes(code)
+    || /Can't reach database server|connection (?:refused|terminated)|database .* not currently accepting connections/i.test(message);
 }

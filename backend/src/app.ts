@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import express from "express";
+import express, { type Request } from "express";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
+import { configureProxyTrust } from "./config/proxy.js";
 import { errorHandler, notFound } from "./middleware/error.middleware.js";
 import { apiRouter } from "./routes/index.js";
 import { uploadsDirectory } from "./services/storage.service.js";
@@ -13,9 +14,13 @@ import { health, ready } from "./controllers/health.controller.js";
 
 export function createApp() {
   const app = express();
-  if (env.NODE_ENV === "production") app.set("trust proxy", 1);
+  configureProxyTrust(app, env.TRUST_PROXY_HOPS);
   app.disable("x-powered-by");
-  app.use(pinoHttp({ logger, genReqId: (req) => req.headers["x-request-id"]?.toString() ?? randomUUID() }));
+  app.use(pinoHttp({
+    logger,
+    genReqId: (req) => req.headers["x-request-id"]?.toString() ?? randomUUID(),
+    customProps: (request) => ({ clientIp: (request as Request).ip, protocol: (request as Request).protocol }),
+  }));
   app.use((req, res, next) => { res.setHeader("X-Request-Id", String(req.id)); next(); });
   app.use(helmet(env.NODE_ENV === "production" ? {} : { strictTransportSecurity: false }));
   app.use(cors({

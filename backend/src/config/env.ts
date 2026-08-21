@@ -14,13 +14,24 @@ const schema = z.object({
   LOG_LEVEL: z.string().default("info"),
   UPLOAD_DIR: z.string().default("../.local/uploads"),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().max(10_000_000).default(2_000_000),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
 }).superRefine((value, context) => {
-  if (value.NODE_ENV === "production" && !value.COOKIE_SECURE) context.addIssue({ code: "custom", path: ["COOKIE_SECURE"], message: "debe ser true en producción" });
+  if (value.NODE_ENV !== "production") return;
+  if (value.TRUST_PROXY_HOPS < 1) context.addIssue({ code: "custom", path: ["TRUST_PROXY_HOPS"], message: "debe declarar al menos un proxy confiable en producción" });
+  if (!value.COOKIE_SECURE) context.addIssue({ code: "custom", path: ["COOKIE_SECURE"], message: "debe ser true en producción" });
+  if (new URL(value.FRONTEND_URL).protocol !== "https:") context.addIssue({ code: "custom", path: ["FRONTEND_URL"], message: "debe usar HTTPS en producción" });
+  if (value.JWT_SECRET === value.JWT_REFRESH_SECRET) context.addIssue({ code: "custom", path: ["JWT_REFRESH_SECRET"], message: "debe ser distinto de JWT_SECRET" });
+  const placeholder = /change[_ -]?me|replace[_ -]?me|example/i;
+  if (placeholder.test(value.JWT_SECRET)) context.addIssue({ code: "custom", path: ["JWT_SECRET"], message: "no puede conservar un valor de ejemplo" });
+  if (placeholder.test(value.JWT_REFRESH_SECRET)) context.addIssue({ code: "custom", path: ["JWT_REFRESH_SECRET"], message: "no puede conservar un valor de ejemplo" });
 });
 
-const result = schema.safeParse(process.env);
-if (!result.success) {
-  throw new Error(`Configuración inválida: ${result.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
+export function parseEnvironment(input: NodeJS.ProcessEnv) {
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new Error(`Configuración inválida: ${result.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
+  }
+  return result.data;
 }
 
-export const env = result.data;
+export const env = parseEnvironment(process.env);

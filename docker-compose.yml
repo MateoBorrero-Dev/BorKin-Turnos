@@ -1,0 +1,118 @@
+name: borkin-turnos
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  PORT: 3000
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL es obligatoria}
+  FRONTEND_URL: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN es obligatorio}
+  JWT_SECRET: ${JWT_SECRET:?JWT_SECRET es obligatorio}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET es obligatorio}
+  JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+  JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-7}
+  COOKIE_SECURE: ${COOKIE_SECURE:-true}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  UPLOAD_DIR: /data/uploads
+  MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-2000000}
+  TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:?TRUST_PROXY_HOPS es obligatorio}
+
+services:
+  postgres:
+    image: postgres:17.10-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB es obligatorio}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER es obligatorio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD es obligatorio}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    logging: *default-logging
+    networks: [internal]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    environment: *backend-environment
+    volumes:
+      - uploads_data:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *default-logging
+    networks: [internal]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    ports:
+      - "${PUBLIC_BIND_IP:-127.0.0.1}:${PUBLIC_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging: *default-logging
+    networks: [internal]
+
+  migrate:
+    profiles: [operations]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: operations
+    environment: *backend-environment
+    command: ["npm", "run", "db:deploy", "--workspace", "backend"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *default-logging
+    networks: [internal]
+
+  seed:
+    profiles: [operations]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: operations
+    environment:
+      <<: *backend-environment
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?ADMIN_USERNAME es obligatorio para el seed}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL es obligatorio para el seed}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD es obligatorio para el seed}
+      BUSINESS_NAME: ${BUSINESS_NAME:-BorKin Turnos}
+    command: ["npm", "run", "db:seed", "--workspace", "backend"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *default-logging
+    networks: [internal]
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  internal:
+    driver: bridge
