@@ -2,7 +2,7 @@
 
 Todos los cambios relevantes de BorKin Turnos se documentan aquí. El proyecto permanece en versión `0.1.0` durante la preparación pre-lanzamiento.
 
-## [0.1.0] - Unreleased
+## [1.0.0] - Unreleased
 
 ### Added
 
